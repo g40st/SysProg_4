@@ -11,6 +11,10 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+#define PORT 8111
+#define MAX_QUERYS 4
+#define MAX_CHAR 1024
+
 /* Wir benutzen die __attribute__ Erweiterung von GCC zur Überprüfung
  * der Argumente von debugPrint. Damit andere Compiler sich nicht beschweren,
  * definieren wir auf diesen __attribute__ als leeres Makro. */

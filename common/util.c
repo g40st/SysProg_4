@@ -14,7 +14,6 @@
 #include <pthread.h>
 #include "util.h"
 
-
 static const char *prog_name = "<unknown>";	/**< Aufrufname des Programms (argv[0]) */
 static int debug_enabled = 0;			/**< Debug-Ausgaben eingeschaltet? */
 

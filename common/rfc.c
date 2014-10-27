@@ -3,7 +3,7 @@
  * Multiplayer-Quiz
  *
  * Gemeinsam verwendete Module
- * 
+ *
  * rfc.c: Implementierung der Funktionen zum Senden und Empfangen von
  * Datenpaketen gemäß dem RFC
  */
