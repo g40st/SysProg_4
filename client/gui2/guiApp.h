@@ -12,10 +12,21 @@
 #include <wx/wx.h>
 #endif
 
+#include "guiPreparation.h"
+#include "guiGame.h"
+
 class ClientApp : public wxApp {
 public:
     virtual bool OnInit();
+
+    void createPreparation();
+    void createGame();
+
+    PreparationFrame* preparation;
+    GameFrame* game;
 };
+
+DECLARE_APP(ClientApp);
 
 #endif
 

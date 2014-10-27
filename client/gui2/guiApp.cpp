@@ -6,7 +6,21 @@
 
 #include "guiApp.h"
 
-bool ClientApp::OnInit() {
+IMPLEMENT_APP_NO_MAIN(ClientApp);
 
+bool ClientApp::OnInit() {
+    preparation = NULL;
+    game = NULL;
+    return true;
+}
+
+void ClientApp::createPreparation() {
+    if (!preparation)
+        preparation = new PreparationFrame("Preparation", wxPoint(50, 50), wxSize(600, 400));
+}
+
+void ClientApp::createGame() {
+    if (!game)
+        game = new GameFrame("Game", wxPoint(50, 50), wxSize(600, 400));
 }
 

@@ -12,9 +12,19 @@
 #include <wx/wx.h>
 #endif
 
+#include <wx/listbox.h>
+
 class PreparationFrame: public wxFrame {
 public:
     PreparationFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
+
+    void OnExit(wxCloseEvent& event);
+
+    wxListBox* questions;
+    wxListBox* players;
+    wxButton* start;
+
+    wxDECLARE_EVENT_TABLE();
 };
 
 #endif

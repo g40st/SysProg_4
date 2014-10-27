@@ -7,8 +7,15 @@
 #include "guiGame.h"
 
 extern "C" {
-
 #include "../gui/gui_interface.h"
+}
+
+GameFrame::GameFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
+        : wxFrame(NULL, wxID_ANY, title, pos, size) {
+
+}
+
+extern "C" {
 
 void game_showWindow(void) {
 
