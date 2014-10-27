@@ -1,5 +1,7 @@
 # Makefile für das Multiplayer-Quiz
 # Stefan Gast, 2013, 2014
+#
+# Thomas Buck, 2014, added WxWidgets GUI support (currently Darwin only)
 ###############################################################################
 
 #################
@@ -7,14 +9,24 @@
 #################
 
 OUTPUT_TARGETS = bin/server bin/client bin/loader
-DIALECT_OPTS = -Wall -std=gnu99
+WARNINGS = -Wall
+DIALECT_OPTS = -std=gnu99
 
 ARCH = $(shell uname -m)
+ARCH2 = $(shell uname -s)
 CCARCH_32 = -march=i686
 CCARCH_64 =
 
 ifndef CFLAGS
 CFLAGS = -pipe -ggdb
+ifeq ($(ARCH2),Darwin)
+LIBQUIZGUI=
+GTK_LIBS=$(shell wx-config --libs) -lstdc++
+CFLAGS+=$(shell wx-config --cflags)
+else
+LIBQUIZGUI = client/gui/libquizgui-$(ARCH).a
+GTK_LIBS = `pkg-config --libs gtk+-2.0` `pkg-config --libs gthread-2.0`
+CFLAGS += -pthread
 ifeq ($(ARCH),i686)
 CFLAGS += $(CCARCH_32)
 else
@@ -23,14 +35,15 @@ CFLAGS += $(CCARCH_64)
 endif
 endif
 endif
+endif
 
-LIBQUIZGUI = client/gui/libquizgui-$(ARCH).a
-GTK_LIBS = `pkg-config --libs gtk+-2.0` `pkg-config --libs gthread-2.0`
+DIALECT_OPTS += $(WARNINGS)
 
 CLEANFILES = server/*.o server/*.dep \
 	     client/*.o client/*.dep \
 	     loader/*.o loader/*.dep \
-	     common/*.o common/*.dep
+	     common/*.o common/*.dep \
+		 client/gui2/*.o client/gui2/*.dep
 MRPROPERFILES = $(OUTPUT_TARGETS)
 
 ###############################################################################
@@ -61,6 +74,15 @@ LOADER_MODULES=loader/browse.o \
 	       loader/util.o \
 	       common/util.o
 
+GUI_MODULES=client/gui2/guiApp.o \
+			client/gui2/guiGame.o \
+			client/gui2/guiMain.o \
+			client/gui2/guiPreparation.o
+
+ifeq ($(ARCH2),Darwin)
+CLIENT_MODULES += $(GUI_MODULES)
+endif
+
 ###############################################################################
 
 ########################################
@@ -80,6 +102,10 @@ all: $(OUTPUT_TARGETS)
 -include $(SERVER_MODULES:.o=.dep)
 -include $(CLIENT_MODULES:.o=.dep)
 -include $(LOADER_MODULES:.o=.dep)
+
+ifeq ($(ARCH2),Darwin)
+-include $(GUI_MODULES:.o=.dep)
+endif
 
 ###############################################################################
 
@@ -108,13 +134,13 @@ mrproper: clean
 ##################################################
 
 bin/server: $(SERVER_MODULES)
-	$(CC) -pthread -o $@ $^ -lrt
+	$(CC) $(CFLAGS) -o $@ $^
 
 bin/client: $(CLIENT_MODULES) $(LIBQUIZGUI)
-	$(CC) -pthread -o $@ $^ -lrt $(GTK_LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(GTK_LIBS)
 
 bin/loader: $(LOADER_MODULES)
-	$(CC) -pthread -o $@ $^ -lrt
+	$(CC) $(CFLAGS) -o $@ $^
 
 ###############################################################################
 
@@ -124,10 +150,20 @@ bin/loader: $(LOADER_MODULES)
 ###########################################################
 
 %.o: %.c
-	$(CC) -c -I. $(CFLAGS) $(DIALECT_OPTS) -pthread -o $@ $<
-	@$(CC) -MM -I. $(CFLAGS) -pthread $< > $*.dep
+	$(CC) -c -I. $(CFLAGS) $(DIALECT_OPTS) -o $@ $<
+	@$(CC) -MM -I. $(CFLAGS) $< > $*.dep
 	@mv -f $*.dep $*.dep.tmp
 	@sed -e 's|.*:|$*.o:|' < $*.dep.tmp > $*.dep
 	@sed -e 's/.*://' -e 's/\\$$//' < $*.dep.tmp | fmt -1 | \
 	  sed -e 's/^ *//' -e 's/$$/:/' >> $*.dep
 	@rm -f $*.dep.tmp
+
+%.o: %.cpp
+	$(CC) -c -I. $(CFLAGS) $(WARNINGS) -o $@ $<
+	@$(CC) -MM -I. $(CFLAGS) $< > $*.dep
+	@mv -f $*.dep $*.dep.tmp
+	@sed -e 's|.*:|$*.o:|' < $*.dep.tmp > $*.dep
+	@sed -e 's/.*://' -e 's/\\$$//' < $*.dep.tmp | fmt -1 | \
+	  sed -e 's/^ *//' -e 's/$$/:/' >> $*.dep
+	@rm -f $*.dep.tmp
+
