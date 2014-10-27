@@ -23,10 +23,12 @@ ifeq ($(ARCH2),Darwin)
 LIBQUIZGUI=
 GTK_LIBS=$(shell wx-config --libs) -lstdc++
 CFLAGS+=$(shell wx-config --cflags)
+RT=
 else
 LIBQUIZGUI = client/gui/libquizgui-$(ARCH).a
 GTK_LIBS = `pkg-config --libs gtk+-2.0` `pkg-config --libs gthread-2.0`
 CFLAGS += -pthread
+RT=-lrt
 ifeq ($(ARCH),i686)
 CFLAGS += $(CCARCH_32)
 else
@@ -134,13 +136,13 @@ mrproper: clean
 ##################################################
 
 bin/server: $(SERVER_MODULES)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(RT)
 
 bin/client: $(CLIENT_MODULES) $(LIBQUIZGUI)
-	$(CC) $(CFLAGS) -o $@ $^ $(GTK_LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(GTK_LIBS) $(RT)
 
 bin/loader: $(LOADER_MODULES)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(RT)
 
 ###############################################################################
 
