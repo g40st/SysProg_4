@@ -13,6 +13,8 @@ extern "C" {
 
 wxBEGIN_EVENT_TABLE(PreparationFrame, wxFrame)
     EVT_CLOSE(PreparationFrame::OnExit)
+    EVT_BUTTON(BUTTON_Start, PreparationFrame::buttonPress)
+    EVT_LISTBOX(LIST_Questions, PreparationFrame::listChange)
 wxEND_EVENT_TABLE()
 
 PreparationFrame::PreparationFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
@@ -22,7 +24,8 @@ PreparationFrame::PreparationFrame(const wxString& title, const wxPoint& pos, co
 
     wxStaticBox* boxLeft = new wxStaticBox(panel, wxID_ANY, "");
     wxStaticText* textLeft = new wxStaticText(boxLeft, wxID_ANY, "Fragekataloge:");
-    questions = new wxListBox(boxLeft, wxID_ANY);
+    questions = new wxListBox(boxLeft, LIST_Questions);
+    questions->Enable(false);
 
     wxBoxSizer* sizerLeft = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* sizerLeft2 = new wxBoxSizer(wxVERTICAL);
@@ -47,10 +50,27 @@ PreparationFrame::PreparationFrame(const wxString& title, const wxPoint& pos, co
     sizer->Add(boxRight, 1, wxEXPAND | wxALL, 10);
     panel->SetSizer(sizer);
 
-    start = new wxButton(panel, wxID_ANY, "Start!");
+    start = new wxButton(panel, BUTTON_Start, "Start!");
+    start->Enable(false);
 
     CreateStatusBar();
     SetStatusText("wxWidgets GUI by xythobuz is ready...");
+}
+
+void PreparationFrame::buttonPress(wxCommandEvent& event) {
+    if (questions->GetSelection() == wxNOT_FOUND) {
+        preparation_onStartClicked("");
+    } else {
+        preparation_onStartClicked(questions->GetString(questions->GetSelection()).c_str());
+    }
+}
+
+void PreparationFrame::listChange(wxCommandEvent& event) {
+    if (questions->GetSelection() == wxNOT_FOUND) {
+        preparation_onCatalogChanged("");
+    } else {
+        preparation_onCatalogChanged(questions->GetString(questions->GetSelection()).c_str());
+    }
 }
 
 void PreparationFrame::OnExit(wxCloseEvent& event) {
@@ -59,9 +79,6 @@ void PreparationFrame::OnExit(wxCloseEvent& event) {
 }
 
 extern "C" {
-
-void preparation_onCatalogChanged(const char *newSelection);
-void preparation_onStartClicked(const char *currentSelection);
 
 void preparation_setMode(PreparationMode mode) {
     wxGetApp().createPreparation();
@@ -87,23 +104,36 @@ void preparation_showWindow(void) {
 }
 
 void preparation_addCatalog(const char *name) {
-
+    wxString s(name);
+    wxGetApp().preparation->questions->InsertItems(1, &s, 0);
 }
 
 int preparation_selectCatalog(const char *name) {
-
+    int p = wxGetApp().preparation->questions->FindString(name, true);
+    if (p != wxNOT_FOUND) {
+        wxGetApp().preparation->questions->SetSelection(p);
+        return 1;
+    }
+    return 0;
 }
 
 void preparation_addPlayer(const char *name) {
-
+    wxString s(name);
+    wxGetApp().preparation->players->InsertItems(1, &s, 0);
 }
 
 int preparation_removePlayer(const char *name) {
-
+    int p = wxGetApp().preparation->players->FindString(name, true);
+    if (p != wxNOT_FOUND) {
+        wxGetApp().preparation->players->SetString(p, "");
+        return 1;
+    }
+    return 0;
 }
 
 void preparation_clearPlayers(void) {
-
+    for (int i = 0; i < wxGetApp().preparation->players->GetCount(); i++)
+        wxGetApp().preparation->players->SetString(i, "");
 }
 
 void preparation_hideWindow(void) {
@@ -112,7 +142,14 @@ void preparation_hideWindow(void) {
 }
 
 void preparation_reset(void) {
+    preparation_clearPlayers();
 
+    for (int i = 0; i < wxGetApp().preparation->questions->GetCount(); i++)
+        wxGetApp().preparation->questions->SetString(i, "");
+
+    wxGetApp().preparation->start->Enable(false);
+    wxGetApp().preparation->questions->Enable(false);
+    wxGetApp().preparation->SetStatusText("wxWidgets GUI by xythobuz was reset...");
 }
 
 }
