@@ -9,7 +9,9 @@ fi
 ./bin/server > server.txt 2> server2.txt &
 
 # Run client, providing some test input
-./bin/client > client.txt 2> client2.txt
+./bin/client > client.txt 2> client2.txt <<EOF
+Test Spieler
+EOF
 
 # Print output
 echo "Server stdout:"

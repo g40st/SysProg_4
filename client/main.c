@@ -19,25 +19,32 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
+#include "common/rfc.h"
 #include "common/util.h"
 #include "gui/gui_interface.h"
 
 void show_help() {
     printf("Available options:\n");
-	printf("    -s --host    specify a host (argument)\n");
+    printf("    -s --host    specify a host (argument)\n");
     printf("    -p --port    specify a port (argument)\n");
     printf("    -h --help    show this help message\n");
 }
 
 int main(int argc, char **argv) {
-	setProgName(argv[0]);
-	debugEnable();
+    setProgName(argv[0]);
+    debugEnable();
+    infoPrint("Client Gruppe 01");
 
-	guiInit(&argc, &argv);
-	infoPrint("Client Gruppe 01");
+    // Get name from user
+    char username[33];
+    printf("Please enter your name:\n");
+    fgets(username, 32, stdin);
+    for (int i = 0; i < 32; i++)
+        if (username[i] == '\n')
+            username[i] = '\0';
 
-	// Initialisierung: Verbindungsaufbau, Threads starten usw...
-	struct sockaddr_in serv_addr;
+    // Initialisierung: Verbindungsaufbau, Threads starten usw...
+    struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     serv_addr.sin_port = htons(PORT);
@@ -97,33 +104,53 @@ int main(int argc, char **argv) {
     printf("Serveradresse: %s\n", inet_ntoa(serv_addr.sin_addr));
     printf("Serverport: %i\n", ntohs(serv_addr.sin_port));
 
-	preparation_showWindow();
-	guiMain();
+    struct rfcLoginRequest {
+        struct rfcMain main; // Length: 1 + length of name
+        uint8_t version; // This semester: 6
+        char name[31]; // Name, not '\0'-terminated!
+    };
 
-	// Resourcen freigeben usw...
-	guiDestroy();
+    struct rfcLoginRequest lrq;
+    lrq.main.type[0] = 'L';
+    lrq.main.type[1] = 'R';
+    lrq.main.type[2] = 'Q';
+    lrq.main.length = htons(1 + strlen(username));
+    lrq.version = RFC_VERSION_NUMBER;
+    memcpy(lrq.name, username, strlen(username));
 
-	return 0;
+    if (send(client_socket, &lrq, RFC_LRQ_SIZE + strlen(username), 0) == -1) {
+        printf("send: %s\n", strerror(errno));
+        return 1;
+    }
+
+    guiInit(&argc, &argv);
+    preparation_showWindow();
+    guiMain();
+
+    // Resourcen freigeben usw...
+    guiDestroy();
+
+    return 0;
 }
 
 void preparation_onCatalogChanged(const char *newSelection) {
-	debugPrint("Katalogauswahl: %s", newSelection);
+    debugPrint("Katalogauswahl: %s", newSelection);
 }
 
 void preparation_onStartClicked(const char *currentSelection) {
-	debugPrint("Starte Katalog %s", currentSelection);
+    debugPrint("Starte Katalog %s", currentSelection);
 }
 
 void preparation_onWindowClosed(void) {
-	debugPrint("Vorbereitungsfenster geschlossen");
-	guiQuit();
+    debugPrint("Vorbereitungsfenster geschlossen");
+    guiQuit();
 }
 
 void game_onSubmitClicked(unsigned char selectedAnswers) {
-	debugPrint("Absende-Button angeklickt, Bitmaske der Antworten: %u", (unsigned)selectedAnswers);
+    debugPrint("Absende-Button angeklickt, Bitmaske der Antworten: %u", (unsigned)selectedAnswers);
 }
 
 void game_onWindowClosed(void) {
-	debugPrint("Spielfenster geschlossen");
-	guiQuit();
+    debugPrint("Spielfenster geschlossen");
+    guiQuit();
 }

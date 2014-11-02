@@ -12,15 +12,17 @@
 
 #include "common/question.h"
 
-#define RFC_VERION_NUMBER 6
+#define RFC_VERSION_NUMBER 6
 
 #pragma pack(push,1)
 
+#define RFC_BASE_SIZE 5
 struct rfcMain {
     char type[3];
     uint16_t length;
 };
 
+#define RFC_LRQ_SIZE (RFC_BASE_SIZE + 1)
 struct rfcLoginRequest {
     struct rfcMain main; // Length: 1 + length of name
     uint8_t version; // This semester: 6
