@@ -13,6 +13,12 @@
 #include <pthread.h>
 
 void *loginThread(void *arg) {
+    struct loginState *state = (struct loginState *)arg;
+
+    //state->sockets[42]
+    //&state->socketCount
+    //pthread_mutex_lock(state->socketMutex)
+
     return NULL;
 }
 

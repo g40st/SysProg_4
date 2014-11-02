@@ -22,10 +22,11 @@
 #include <pthread.h>
 #include <fcntl.h>
 
-#define MAX_SOCKETS 4
+const static int MAX_SOCKETS = 4;
 int sockets[MAX_SOCKETS];
 int socketCount = 0;
 pthread_mutex_t socketMutex = PTHREAD_MUTEX_INITIALIZER;
+struct loginState state = { sockets, &socketCount, &socketMutex };
 
 #define LOCKFILE "/tmp/serverGroup01"
 
@@ -118,7 +119,7 @@ int main(int argc, char **argv) {
 
     // Create Threads
     pthread_t threads[1];
-    if (pthread_create(threads, NULL, loginThread, NULL) != 0) {
+    if (pthread_create(threads, NULL, loginThread, &state) != 0) {
         printf("pthread_create: %s\n", strerror(errno));
         return 1;
     }
