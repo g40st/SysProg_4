@@ -20,11 +20,48 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include <fcntl.h>
 
 #define MAX_SOCKETS 4
 int sockets[MAX_SOCKETS];
 int socketCount = 0;
 pthread_mutex_t socketMutex = PTHREAD_MUTEX_INITIALIZER;
+
+#define LOCKFILE "/tmp/serverGroup01"
+
+int singleton(const char *lockfile) {
+    int file = open(lockfile, O_WRONLY | O_CREAT, 0644);
+    if (file < 0) {
+        perror("Cannot create pid file");
+        return 1;
+    }
+
+    struct flock lock;
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+
+    if (fcntl(file, F_SETLK, &lock) < 0) {
+        perror("Cannot lock pid file");
+        return 2;
+    }
+
+    if (ftruncate(file, 0) < 0) {
+        perror("ftruncate");
+        return 3;
+    }
+
+    char s[32];
+    snprintf(s, sizeof(s), "%d\n", (int)getpid());
+    if (write(file, s, strlen(s)) < strlen(s))
+        perror("write");
+
+    if (fsync(file) < 0)
+        perror("fsync");
+
+    return 0;
+}
 
 void show_help() {
     printf("Available options:\n");
@@ -35,6 +72,9 @@ void show_help() {
 int main(int argc, char **argv) {
     setProgName(argv[0]);
     infoPrint("Server Gruppe 01");
+
+    if (singleton(LOCKFILE) != 0)
+        return 1;
 
     struct sockaddr_in server;
     server.sin_family = AF_INET;
