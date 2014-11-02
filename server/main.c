@@ -7,7 +7,9 @@
  * main.c: Hauptprogramm des Servers
  */
 
+#include "server/login.h"
 #include "common/util.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
@@ -17,58 +19,54 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-
-#define PORT 8111
-#define MAX_QUERYS 4
-#define MAX_CHAR 1024
+#include <pthread.h>
 
 void show_help() {
-    printf("Usage: getopt [OPTIONS] [EXTRA] ...\n");
-    printf("        -p --port       specify a port(argument) \n");
-    printf("        -h --help       show this help message \n");
+    printf("Available options:\n");
+    printf("    -p --port    specify a port (argument)\n");
+    printf("    -h --help    show this help message\n");
 }
 
 int main(int argc, char **argv) {
-	setProgName(argv[0]);
-	/* debugEnable() */
-
-	infoPrint("Server Gruppe 01");
+    setProgName(argv[0]);
+    infoPrint("Server Gruppe 01");
 
     struct sockaddr_in server;
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(PORT);
 
-
     const char* short_options = "hp:";
     struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
-        {"port", required_argument, 0, 'p'},
-        {NULL, 0, NULL, 0}
+        { "help", no_argument, 0, 'h' },
+        { "port", required_argument, 0, 'p' },
+        { NULL, 0, NULL, 0 }
     };
 
     int option_index = 0;
-    int c;
-
-    while(1) {
-        c = getopt_long(argc, argv, short_options, long_options, &option_index);
-        if(c == -1) {
-            break;
-        }
-        switch(c) {
+    int loop = 1;
+    while (loop != 0) {
+        int c = getopt_long(argc, argv, short_options, long_options, &option_index);
+        switch (c) {
             case 'h':
                 show_help();
                 exit(1);
                 break;
+
             case 'p':
-                if(optarg) {
+                if(optarg)
                     server.sin_port = htons(atoi(optarg));
-                    break;
-                }
+                break;
+
+            default:
             case '?':
-                    printf("Option not implemented yet -- %s (%c)\n", argv[optind-1], c);
-                    show_help();
-                    break;
+                printf("Option not implemented yet -- %s (%c)\n", argv[optind-1], c);
+                show_help();
+                break;
+
+            case -1:
+                loop = 0;
+                break;
         }
 
     }
@@ -81,7 +79,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // IP und Port zweisen
+    // IP und Port zuweisen
     if (bind(listen_socket, (struct sockaddr*) &server, sizeof(struct sockaddr_in)) == -1) {
         printf("bind: %s\n", strerror(errno));
         close(listen_socket);
@@ -103,5 +101,14 @@ int main(int argc, char **argv) {
         close(listen_socket);
         return 1;
     }
+
+    pthread_t threads[1];
+    if (pthread_create(threads, NULL, loginThread, NULL) != 0) {
+        printf("pthread_create: %s\n", strerror(errno));
+        return 1;
+    }
+
+    pthread_exit(NULL);
 	return 0;
 }
+

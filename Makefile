@@ -22,7 +22,7 @@ CFLAGS = -pipe -ggdb
 ifeq ($(ARCH2),Darwin)
 LIBQUIZGUI=
 GTK_LIBS=$(shell wx-config --libs) -lstdc++
-CFLAGS+=$(shell wx-config --cflags)
+CFLAGS+=$(shell wx-config --cflags) -pthread
 RT=
 else
 LIBQUIZGUI = client/gui/libquizgui-$(ARCH).a
