@@ -71,6 +71,13 @@ int main(int argc, char **argv) {
 
     }
 
+    // Create Threads
+    pthread_t threads[1];
+    if (pthread_create(threads, NULL, loginThread, NULL) != 0) {
+        printf("pthread_create: %s\n", strerror(errno));
+        return 1;
+    }
+
     printf("Serverport: %i\n", ntohs(server.sin_port));
 
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -86,29 +93,29 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Wartet auf Verbindungsanfragen
-    if (listen(listen_socket, MAX_QUERYS) == -1) {
-        printf("listen: %s\n", strerror(errno));
-        close(listen_socket);
-        return 1;
-    }
+    // Listen for connections from a new client
+    while (1) {
+        // Wartet auf Verbindungsanfragen
+        if (listen(listen_socket, MAX_QUERYS) == -1) {
+            printf("listen: %s\n", strerror(errno));
+            close(listen_socket);
+            return 1;
+        }
 
-    struct sockaddr_in remote_host;
-    socklen_t sin_size = sizeof(struct sockaddr_in);
-    int client_socket = accept(listen_socket, (struct sockaddr *) &remote_host, &sin_size);
-    if (client_socket == -1) {
-        printf("accept: %s\n", strerror(errno));
-        close(listen_socket);
-        return 1;
-    }
+        struct sockaddr_in remote_host;
+        socklen_t sin_size = sizeof(struct sockaddr_in);
+        int client_socket = accept(listen_socket, (struct sockaddr *) &remote_host, &sin_size);
+        if (client_socket == -1) {
+            printf("accept: %s\n", strerror(errno));
+            close(listen_socket);
+            return 1;
+        }
 
-    pthread_t threads[1];
-    if (pthread_create(threads, NULL, loginThread, NULL) != 0) {
-        printf("pthread_create: %s\n", strerror(errno));
-        return 1;
+        // TODO give socket to login thread somehow
+        close(client_socket);
     }
 
     pthread_exit(NULL);
-	return 0;
+    return 0;
 }
 
