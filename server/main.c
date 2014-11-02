@@ -21,6 +21,11 @@
 #include <errno.h>
 #include <pthread.h>
 
+#define MAX_SOCKETS 4
+int sockets[MAX_SOCKETS];
+int socketCount = 0;
+pthread_mutex_t socketMutex = PTHREAD_MUTEX_INITIALIZER;
+
 void show_help() {
     printf("Available options:\n");
     printf("    -p --port    specify a port (argument)\n");
@@ -111,7 +116,16 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        // TODO give socket to login thread somehow
+        pthread_mutex_lock(&socketMutex);
+        if (socketCount < (MAX_SOCKETS - 1)) {
+            sockets[socketCount++] = client_socket;
+        } else {
+            printf("Too many connections...\n");
+            close(listen_socket);
+            return 1;
+        }
+        pthread_mutex_unlock(&socketMutex);
+
         close(client_socket);
     }
 
