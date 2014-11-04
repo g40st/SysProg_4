@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <errno.h>
 
 #include "common/rfc.h"
