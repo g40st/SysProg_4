@@ -61,13 +61,14 @@ int singleton(const char *lockfile) {
 
 void show_help() {
     printf("Available options:\n");
-    printf("    -p --port    specify a port (argument)\n");
-    printf("    -h --help    show this help message\n");
+    printf("    -p --port       specify a port (argument)\n");
+    printf("    -v --verbose    enable debug output")
+    printf("    -h --help       show this help message\n");
 }
 
 int main(int argc, char **argv) {
     setProgName(argv[0]);
-    debugEnable();
+    debugDisable();
     infoPrint("Server Gruppe 01");
 
     debugPrint("Making sure we're running only once...");
@@ -80,9 +81,10 @@ int main(int argc, char **argv) {
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(PORT);
 
-    const char* short_options = "hp:";
+    const char* short_options = "hvp:";
     struct option long_options[] = {
         { "help", no_argument, 0, 'h' },
+        { "verbose", no_argument, 0, 'v' },
         { "port", required_argument, 0, 'p' },
         { NULL, 0, NULL, 0 }
     };
@@ -95,6 +97,10 @@ int main(int argc, char **argv) {
             case 'h':
                 show_help();
                 exit(1);
+                break;
+
+            case 'v':
+                debugEnable();
                 break;
 
             case 'p':

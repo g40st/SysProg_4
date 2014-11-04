@@ -27,14 +27,15 @@
 
 void show_help() {
     printf("Available options:\n");
-    printf("    -s --host    specify a host (argument)\n");
-    printf("    -p --port    specify a port (argument)\n");
-    printf("    -h --help    show this help message\n");
+    printf("    -s --host       specify a host (argument)\n");
+    printf("    -p --port       specify a port (argument)\n");
+    printf("    -v --verbose    enable debug output\n");
+    printf("    -h --help       show this help message\n");
 }
 
 int main(int argc, char **argv) {
     setProgName(argv[0]);
-    debugEnable();
+    debugDisable();
     infoPrint("Client Gruppe 01");
 
     // Get name from user
@@ -53,9 +54,10 @@ int main(int argc, char **argv) {
     serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     serv_addr.sin_port = htons(PORT);
 
-    const char* short_options = "hp:s:";
+    const char* short_options = "hvp:s:";
     struct option long_options[] = {
         { "help", no_argument, 0, 'h' },
+        { "verbose", no_argument, 0, 'v' },
         { "port", required_argument, 0, 'p' },
         { "host", required_argument, 0, 's' },
         { NULL, 0, NULL, 0 }
@@ -72,6 +74,10 @@ int main(int argc, char **argv) {
             case 'h':
                 show_help();
                 return 0;
+
+            case 'v':
+                debugEnable();
+                break;
 
             case 's':
                 if (optarg)

@@ -83,7 +83,7 @@ struct rfcGameOver {
 struct rfcErrorWarning {
     struct rfcMain main; // Length: 1 + length of message
     uint8_t subtype; // 0 Warning; 1 Error, exit Client
-    char message[MAX_STRING_LENGTH]; // <essage. Not '\0'-terminated!
+    char message[MAX_STRING_LENGTH]; // Message. Not '\0'-terminated!
 };
 
 typedef union {

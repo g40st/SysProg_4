@@ -27,7 +27,7 @@ int equalLiteral(struct rfcMain m, const char *s) {
 
 int handleErrorWarningMessage(rfc response) {
     if (equalLiteral(response.main, "ERR")) {
-        int length = ntohs(response.main.length) - 1;
+        int length = ntohs(response.main.length) - RFC_ERR_SIZE;
         char s[length + 1];
         s[length] = '\0';
         memcpy(s, &response.errorWarning.message, length);
