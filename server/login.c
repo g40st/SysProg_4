@@ -63,7 +63,8 @@ static void loginHandleSocket(int socket) {
                 break;
             }
         }
-        if (id >= 0) {
+
+        if ((id >= 0) && (id < MAX_PLAYERS)) {
             // Success
             userCountSet(id + 1);
             userSet(s, id);

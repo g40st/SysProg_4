@@ -13,7 +13,8 @@
 #include "common/question.h"
 
 #define RFC_VERSION_NUMBER 6
-#define RFC_MAX_SIZE 148
+#define MAX_STRING_LENGTH 1024
+#define RFC_MAX_SIZE (RFC_BASE_SIZE + MAX_STRING_LENGTH + 1)
 
 #pragma pack(push,1)
 
@@ -39,7 +40,7 @@ struct rfcLoginResponseOK {
 
 struct rfcCatalog {
     struct rfcMain main; // Length: 0 (end-marker) or length of filename
-    char filename; // First character of filename. Not '\0'-terminated!
+    char filename[MAX_STRING_LENGTH]; // Filename. Not '\0'-terminated!
 };
 
 struct rfcPlayer {
@@ -59,7 +60,7 @@ struct rfcPlayerList {
 
 struct rfcStartGame {
     struct rfcMain main; // Length: length of filename
-    char filename; // First character of filename. Not '\0'-terminated!
+    char filename[MAX_STRING_LENGTH]; // Filename. Not '\0'-terminated!
 };
 
 struct rfcQuestionAnswered {
@@ -82,7 +83,7 @@ struct rfcGameOver {
 struct rfcErrorWarning {
     struct rfcMain main; // Length: 1 + length of message
     uint8_t subtype; // 0 Warning; 1 Error, exit Client
-    char message; // First char of message. Not '\0'-terminated!
+    char message[MAX_STRING_LENGTH]; // <essage. Not '\0'-terminated!
 };
 
 typedef union {
