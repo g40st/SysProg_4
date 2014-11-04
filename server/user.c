@@ -14,7 +14,7 @@
 
 #include "user.h"
 
-static const char **users = NULL;
+static char **users = NULL;
 static int numUsers = 0;
 static pthread_mutex_t mutexUsers = PTHREAD_MUTEX_INITIALIZER;
 
@@ -36,30 +36,41 @@ const char *userGet(int index) {
     return ret;
 }
 
-// Returns 1 on success, 0 on error
+// Returns -1 on error, else new index
 int userAdd(const char *name) {
     pthread_mutex_lock(&mutexUsers);
     for (int i = 0; i < numUsers; i++) {
         if (strcmp(users[i], name) == 0) {
             pthread_mutex_unlock(&mutexUsers);
-            return 0;
+            return -1;
         }
     }
 
     numUsers++;
-    const char **newUsers = realloc(users, numUsers * sizeof(const char *));
+    char **newUsers = realloc(users, numUsers * sizeof(const char *));
     if (newUsers == NULL) {
         free(users);
+        users = NULL;
         numUsers = 0;
         pthread_mutex_unlock(&mutexUsers);
         printf("Not enough memory!\n");
-        return 0;
+        return -1;
     }
 
     users = newUsers;
-    users[numUsers - 1] = name;
+    int id = numUsers - 1;
+    users[id] = malloc((strlen(name) + 1) * sizeof(char));
+    if (users[id] == NULL) {
+        free(users);
+        users = NULL;
+        numUsers = 0;
+        pthread_mutex_unlock(&mutexUsers);
+        printf("Not enough memory!\n");
+        return -1;
+    }
+    strcpy(users[id], name);
     pthread_mutex_unlock(&mutexUsers);
-    return 1;
+    return id;
 }
 
 // Returns 1 on success, 0 on error
@@ -68,9 +79,10 @@ int userRemove(int index) {
     if ((index >= 0) && (index < numUsers)) {
         memmove((void *)(users + index), (void *)(users + index + 1), numUsers - index - 1);
         numUsers--;
-        const char **newUsers = realloc(users, numUsers * sizeof(const char *));
+        char **newUsers = realloc(users, numUsers * sizeof(const char *));
         if (newUsers == NULL) {
             free(users);
+            users = NULL;
             numUsers = 0;
             pthread_mutex_unlock(&mutexUsers);
             printf("Not enough memory!\n");

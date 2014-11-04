@@ -43,6 +43,8 @@ int main(int argc, char **argv) {
         if (username[i] == '\n')
             username[i] = '\0';
 
+    debugPrint("Parsing command line options...");
+
     // Initialisierung: Verbindungsaufbau, Threads starten usw...
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
@@ -87,6 +89,8 @@ int main(int argc, char **argv) {
         }
     }
 
+    debugPrint("Creating the socket...");
+
     // Anlegen des Sockets
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
@@ -100,9 +104,16 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    debugPrint("Initializing UI...");
+
+    guiInit(&argc, &argv);
+    preparation_setMode(PREPARATION_MODE_BUSY);
+    preparation_showWindow();
+
     // Ausgabe/Eingabe
-    printf("Serveradresse: %s\n", inet_ntoa(serv_addr.sin_addr));
-    printf("Serverport: %i\n", ntohs(serv_addr.sin_port));
+    infoPrint("Serveradresse: %s", inet_ntoa(serv_addr.sin_addr));
+    infoPrint("Serverport: %i", ntohs(serv_addr.sin_port));
+    debugPrint("Sending LoginRequest...");
 
     // Send LoginRequest
     struct rfcLoginRequest lrq;
@@ -117,33 +128,48 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    debugPrint("Waiting for response...");
+
     // Receive response
     rfc response;
     int receive = recv(client_socket, &response, RFC_MAX_SIZE, 0);
     if (receive == -1) {
-        printf("receive: %s\n", strerror(errno));
+        errorPrint("receive: %s", strerror(errno));
         return 1;
     } else if (receive == 0) {
-        printf("Remote host closed connection\n");
+        errorPrint("Remote host closed connection");
         return 1;
     }
 
     // Check response and react accordingly
     if (equalLiteral(response.main, "LOK")) {
+        debugPrint("Login successful!");
+
         if (response.loginResponseOK.version != RFC_VERSION_NUMBER) {
-            printf("Wrong RFC version: %d\n", response.loginResponseOK.version);
+            errorPrint("Wrong RFC version: %d", response.loginResponseOK.version);
             return 1;
         }
 
-        printf("We've been assigned ID no. %d\n", response.loginResponseOK.clientID);
+        infoPrint("We've been assigned ID no. %d", response.loginResponseOK.clientID);
+
+        preparation_addPlayer(username);
+        if (response.loginResponseOK.clientID == 0) {
+            preparation_setMode(PREPARATION_MODE_PRIVILEGED);
+        } else {
+            preparation_setMode(PREPARATION_MODE_NORMAL);
+        }
     } else if (equalLiteral(response.main, "ERR")) {
+        debugPrint("Error while logging in!");
         handleErrorWarningMessage(response);
         return 1;
     } else {
-        printf("Unexpected response: %c%c%c\n", response.main.type[0],
+        errorPrint("Unexpected response: %c%c%c", response.main.type[0],
                 response.main.type[1], response.main.type[2]);
         return 1;
     }
+
+    /*
+    debugPrint("Sending CatalogRequest...");
 
     // Send CatalogRequest
     response.main.type[0] = 'C';
@@ -151,17 +177,16 @@ int main(int argc, char **argv) {
     response.main.type[2] = 'Q';
     response.main.length = htons(0);
     if (send(client_socket, &response.main, RFC_BASE_SIZE, 0) == -1) {
-        printf("send: %s\n", strerror(errno));
+        errorPrint("send: %s", strerror(errno));
         return 1;
     }
+    */
 
     // TODO:
     // - Start GUI Thread
     // - Start Listener Thread
     // - Start Fragewechsel Thread
 
-    guiInit(&argc, &argv);
-    preparation_showWindow();
     guiMain();
 
     // Resourcen freigeben usw...

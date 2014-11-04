@@ -30,6 +30,7 @@ struct rfcLoginRequest {
     char name[31]; // Name, not '\0'-terminated!
 };
 
+#define RFC_LOK_SIZE (RFC_BASE_SIZE + 2)
 struct rfcLoginResponseOK {
     struct rfcMain main; // Length: 2
     uint8_t version; // This semester: 6
@@ -76,6 +77,7 @@ struct rfcGameOver {
     uint8_t rank; // (1 <= rank <= 4)
 };
 
+#define RFC_ERR_SIZE (RFC_BASE_SIZE + 1)
 struct rfcErrorWarning {
     struct rfcMain main; // Length: 1 + length of message
     uint8_t subtype; // 0 Warning; 1 Error, exit Client

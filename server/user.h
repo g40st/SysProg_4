@@ -15,7 +15,7 @@ int userCount(void);
 // Returns NULL on error
 const char *userGet(int index);
 
-// Returns 1 on success, 0 on error
+// Returns -1 on error, else new index
 int userAdd(const char *name);
 
 // Returns 1 on success, 0 on error

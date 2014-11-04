@@ -22,12 +22,6 @@
 #include <pthread.h>
 #include <fcntl.h>
 
-const static int MAX_SOCKETS = 4;
-int sockets[MAX_SOCKETS];
-int socketCount = 0;
-pthread_mutex_t socketMutex = PTHREAD_MUTEX_INITIALIZER;
-struct loginState state = { sockets, &socketCount, &socketMutex };
-
 #define LOCKFILE "/tmp/serverGroup01"
 
 int singleton(const char *lockfile) {
@@ -72,11 +66,14 @@ void show_help() {
 
 int main(int argc, char **argv) {
     setProgName(argv[0]);
+    debugEnable();
     infoPrint("Server Gruppe 01");
 
+    debugPrint("Making sure we're running only once...");
     if (singleton(LOCKFILE) != 0)
         return 1;
 
+    debugPrint("Parsing command line options...");
     struct sockaddr_in server;
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -117,14 +114,8 @@ int main(int argc, char **argv) {
 
     }
 
-    // Create Threads
-    pthread_t threads[1];
-    if (pthread_create(threads, NULL, loginThread, &state) != 0) {
-        printf("pthread_create: %s\n", strerror(errno));
-        return 1;
-    }
-
-    printf("Serverport: %i\n", ntohs(server.sin_port));
+    infoPrint("Serverport: %i", ntohs(server.sin_port));
+    debugPrint("Creating socket...");
 
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_socket == -1) {
@@ -140,6 +131,7 @@ int main(int argc, char **argv) {
     }
 
     // Listen for connections from a new client
+    debugPrint("Waiting for connections...");
     while (1) {
         // Wartet auf Verbindungsanfragen
         if (listen(listen_socket, MAX_QUERYS) == -1) {
@@ -157,17 +149,14 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        pthread_mutex_lock(&socketMutex);
-        if (socketCount < (MAX_SOCKETS - 1)) {
-            sockets[socketCount++] = client_socket;
-        } else {
-            printf("Too many connections...\n");
-            close(listen_socket);
+        debugPrint("Got a new connection! Starting login thread...");
+
+        // Start new login thread for each connection...?
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, loginThread, &client_socket) != 0) {
+            printf("pthread_create: %s\n", strerror(errno));
             return 1;
         }
-        pthread_mutex_unlock(&socketMutex);
-
-        close(client_socket);
     }
 
     pthread_exit(NULL);
