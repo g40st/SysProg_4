@@ -62,7 +62,7 @@ int singleton(const char *lockfile) {
 void show_help() {
     printf("Available options:\n");
     printf("    -p --port       specify a port (argument)\n");
-    printf("    -v --verbose    enable debug output")
+    printf("    -v --verbose    enable debug output\n");
     printf("    -h --help       show this help message\n");
 }
 
