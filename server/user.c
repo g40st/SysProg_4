@@ -22,10 +22,10 @@ static int numUsers = 0;
 static pthread_mutex_t mutexUsers = PTHREAD_MUTEX_INITIALIZER;
 
 void userCountSet(int c) {
-    if ((c >= 0) && (c < MAX_PLAYERS)) {
+    if ((c >= 0) && (c <= MAX_PLAYERS)) {
         pthread_mutex_lock(&mutexUsers);
-        numUsers = c;
         debugPrint("userCountSet: %d -> %d", numUsers, c);
+        numUsers = c;
         pthread_mutex_unlock(&mutexUsers);
     } else {
         debugPrint("Invalid userCountSet: %d", c);
