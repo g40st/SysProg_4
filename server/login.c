@@ -16,26 +16,38 @@
 #include <errno.h>
 
 #include "common/rfc.h"
+#include "common/util.h"
 #include "user.h"
 #include "login.h"
 
-void *loginThread(void *arg) {
-    int socket = *((int *)arg);
+static int sockets[MAX_PLAYERS] = { -1, -1, -1, -1 };
+static int socketCount = 0;
+static pthread_mutex_t socketMutex = PTHREAD_MUTEX_INITIALIZER;
 
+void loginAddSocket(int sock) {
+    pthread_mutex_lock(&socketMutex);
+    if (socketCount < MAX_PLAYERS) {
+        sockets[socketCount] = sock;
+        socketCount++;
+    }
+    pthread_mutex_unlock(&socketMutex);
+}
+
+static void loginHandleSocket(int socket) {
     rfc response;
     int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
     if (receive == -1) {
         printf("receive: %s\n", strerror(errno));
-        return NULL;
+        return;
     } else if (receive == 0) {
         printf("Remote host closed connection\n");
-        return NULL;
+        return;
     }
 
     if (equalLiteral(response.main, "LRQ")) {
         if (response.loginRequest.version != RFC_VERSION_NUMBER) {
             printf("Wrong RFC version: %d\n", response.loginRequest.version);
-            return NULL;
+            return;
         }
 
         int length = ntohs(response.main.length) - 1;
@@ -61,7 +73,7 @@ void *loginThread(void *arg) {
             response.loginResponseOK.clientID = (uint8_t)id;
             if (send(socket, &response, RFC_LOK_SIZE, 0) == -1) {
                 printf("send: %s\n", strerror(errno));
-                return NULL;
+                return;
             }
         } else {
             // Error, send ERR
@@ -73,13 +85,26 @@ void *loginThread(void *arg) {
             memcpy(&response.errorWarning.message, "Login Error", 11);
             if (send(socket, &response, RFC_ERR_SIZE + 11, 0) == -1) {
                 printf("send: %s\n", strerror(errno));
-                return NULL;
+                return;
             }
         }
     } else {
         printf("Unexpected response: %c%c%c\n", response.main.type[0],
                 response.main.type[1], response.main.type[2]);
-        return NULL;
+        return;
+    }
+}
+
+void *loginThread(void *arg) {
+    while (1) {
+        pthread_mutex_lock(&socketMutex);
+        while (socketCount > 0) {
+            int sock = sockets[socketCount - 1];
+            sockets[socketCount - 1] = -1;
+            socketCount--;
+            loginHandleSocket(sock);
+        }
+        pthread_mutex_unlock(&socketMutex);
     }
 
     return NULL;

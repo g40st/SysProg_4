@@ -115,8 +115,15 @@ int main(int argc, char **argv) {
     }
 
     infoPrint("Serverport: %i", ntohs(server.sin_port));
-    debugPrint("Creating socket...");
 
+    debugPrint("Starting Threads...");
+    pthread_t threads[1];
+    if (pthread_create(threads, NULL, loginThread, NULL) != 0) {
+        printf("pthread_create: %s\n", strerror(errno));
+        return 1;
+    }
+
+    debugPrint("Creating socket...");
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_socket == -1) {
         printf("socket: %s\n", strerror(errno));
@@ -149,14 +156,8 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        debugPrint("Got a new connection! Starting login thread...");
-
-        // Start new login thread for each connection...?
-        pthread_t thread;
-        if (pthread_create(&thread, NULL, loginThread, &client_socket) != 0) {
-            printf("pthread_create: %s\n", strerror(errno));
-            return 1;
-        }
+        debugPrint("Got a new connection! Sending to LoginThread...");
+        loginAddSocket(client_socket);
     }
 
     pthread_exit(NULL);
