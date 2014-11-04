@@ -88,7 +88,7 @@ static void loginHandleSocket(int socket) {
             response.main.type[0] = 'E';
             response.main.type[1] = 'R';
             response.main.type[2] = 'R';
-            response.main.length = htons(2);
+            response.main.length = htons(RFC_ERR_SIZE + 11);
             response.errorWarning.subtype = 1; // Error
             memcpy(response.errorWarning.message, "Login Error", 11);
             if (send(socket, &response, RFC_ERR_SIZE + 11, 0) == -1) {
