@@ -51,8 +51,6 @@ void *listenerThread(void *arg) {
             errorPrint("Unexpected response: %c%c%c", response.main.type[0],
                     response.main.type[1], response.main.type[2]);
         }
-
-        loopsleep();
     }
 
     return NULL;

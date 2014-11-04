@@ -42,7 +42,7 @@ static void sendPlayerList(int socket) {
     PLAYER_LIST(2)
     PLAYER_LIST(3)
     if (send(socket, &list, RFC_LST_SIZE(c), 0) == -1) {
-        printf("send: %s\n", strerror(errno));
+        errorPrint("send: %s", strerror(errno));
     }
 }
 

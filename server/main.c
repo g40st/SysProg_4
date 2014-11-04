@@ -75,12 +75,12 @@ int main(int argc, char **argv) {
     if (singleton(LOCKFILE) != 0)
         return 1;
 
-    debugPrint("Parsing command line options...");
     struct sockaddr_in server;
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(PORT);
 
+    debugPrint("Parsing command line options...");
     const char* short_options = "hvp:";
     struct option long_options[] = {
         { "help", no_argument, 0, 'h' },
@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
 
             default:
             case '?':
-                printf("Option not implemented yet -- %s (%c)\n", argv[optind-1], c);
+                errorPrint("Option not implemented yet -- %s (%c)", argv[optind-1], c);
                 show_help();
                 break;
 
@@ -118,7 +118,6 @@ int main(int argc, char **argv) {
                 loop = 0;
                 break;
         }
-
     }
 
     infoPrint("Serverport: %i", ntohs(server.sin_port));
@@ -126,34 +125,30 @@ int main(int argc, char **argv) {
     debugPrint("Starting Threads...");
     pthread_t threads[2];
     if (pthread_create(&threads[0], NULL, loginThread, NULL) != 0) {
-        printf("pthread_create: %s\n", strerror(errno));
+        errorPrint("pthread_create: %s", strerror(errno));
         return 1;
     }
     if (pthread_create(&threads[1], NULL, scoreThread, NULL) != 0) {
-        printf("pthread_create: %s\n", strerror(errno));
+        errorPrint("pthread_create: %s", strerror(errno));
         return 1;
     }
 
     debugPrint("Creating socket...");
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_socket == -1) {
-        printf("socket: %s\n", strerror(errno));
+        errorPrint("socket: %s", strerror(errno));
         return 1;
     }
-
-    // IP und Port zuweisen
     if (bind(listen_socket, (struct sockaddr*) &server, sizeof(struct sockaddr_in)) == -1) {
-        printf("bind: %s\n", strerror(errno));
+        errorPrint("bind: %s", strerror(errno));
         close(listen_socket);
         return 1;
     }
 
-    // Listen for connections from a new client
     debugPrint("Waiting for connections...");
     while (1) {
-        // Wartet auf Verbindungsanfragen
         if (listen(listen_socket, MAX_QUERYS) == -1) {
-            printf("listen: %s\n", strerror(errno));
+            errorPrint("listen: %s", strerror(errno));
             close(listen_socket);
             return 1;
         }
@@ -162,15 +157,13 @@ int main(int argc, char **argv) {
         socklen_t sin_size = sizeof(struct sockaddr_in);
         int client_socket = accept(listen_socket, (struct sockaddr *) &remote_host, &sin_size);
         if (client_socket == -1) {
-            printf("accept: %s\n", strerror(errno));
+            errorPrint("accept: %s", strerror(errno));
             close(listen_socket);
             return 1;
         }
 
         debugPrint("Got a new connection! Sending to LoginThread...");
         loginAddSocket(client_socket);
-
-        loopsleep();
     }
 
     pthread_exit(NULL);
