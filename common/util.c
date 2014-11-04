@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
+#include <time.h>
 #include "util.h"
 
 static const char *prog_name = "<unknown>";	/**< Aufrufname des Programms (argv[0]) */
@@ -435,3 +436,11 @@ char *readLine(int fd		/**< Der Dateideskriptor, von dem gelesen werden soll */
 
 	return NULL;	/* wird nie erreicht */
 }
+
+void loopsleep(void) {
+    struct timespec t;
+    t.tv_sec = 0;
+    t.tv_nsec = 25 * 1000000;
+    nanosleep(&t, NULL);
+}
+

@@ -41,4 +41,6 @@ void vhexdump(const void *ptr, size_t n, const char *fmt, va_list args);
 
 char *readLine(int fd);
 
+void loopsleep(void);
+
 #endif

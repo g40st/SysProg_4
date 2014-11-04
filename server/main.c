@@ -163,6 +163,8 @@ int main(int argc, char **argv) {
 
         debugPrint("Got a new connection! Sending to LoginThread...");
         loginAddSocket(client_socket);
+
+        loopsleep();
     }
 
     pthread_exit(NULL);

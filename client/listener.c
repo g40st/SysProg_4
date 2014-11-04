@@ -25,28 +25,33 @@
 void *listenerThread(void *arg) {
     int socket = *((int *)arg);
     rfc response;
-    int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
-    if (receive == -1) {
-        errorPrint("receive: %s", strerror(errno));
-        return NULL;
-    } else if (receive == 0) {
-        errorPrint("Remote host closed connection");
-        return NULL;
-    }
 
-    // Check response and react accordingly
-    if (equalLiteral(response.main, "LST")) {
-        int count = response.main.length / 37;
-        preparation_clearPlayers();
-        PLAYER_LIST(0)
-        PLAYER_LIST(1)
-        PLAYER_LIST(2)
-        PLAYER_LIST(3)
-    } else if (equalLiteral(response.main, "CRE")) {
-        // TODO handle CatalogResponse
-    } else {
-        errorPrint("Unexpected response: %c%c%c", response.main.type[0],
-                response.main.type[1], response.main.type[2]);
+    while (1) {
+        int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
+        if (receive == -1) {
+            errorPrint("receive: %s", strerror(errno));
+            return NULL;
+        } else if (receive == 0) {
+            errorPrint("Remote host closed connection");
+            return NULL;
+        }
+
+        // Check response and react accordingly
+        if (equalLiteral(response.main, "LST")) {
+            int count = response.main.length / 37;
+            preparation_clearPlayers();
+            PLAYER_LIST(0)
+            PLAYER_LIST(1)
+            PLAYER_LIST(2)
+            PLAYER_LIST(3)
+        } else if (equalLiteral(response.main, "CRE")) {
+            // TODO handle CatalogResponse
+        } else {
+            errorPrint("Unexpected response: %c%c%c", response.main.type[0],
+                    response.main.type[1], response.main.type[2]);
+        }
+
+        loopsleep();
     }
 
     return NULL;

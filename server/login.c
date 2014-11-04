@@ -111,6 +111,8 @@ void *loginThread(void *arg) {
             loginHandleSocket(sock);
         }
         pthread_mutex_unlock(&socketMutex);
+
+        loopsleep();
     }
 
     return NULL;

@@ -67,6 +67,8 @@ void *scoreThread(void *arg) {
 
         if (sf > 0)
             sendPlayerListToAll();
+
+        loopsleep();
     }
 
     return NULL;
