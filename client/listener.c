@@ -25,7 +25,7 @@
 void *listenerThread(void *arg) {
     int socket = *((int *)arg);
     rfc response;
-
+    debugPrint("ListenerThread is starting its loop...");
     while (1) {
         int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
         if (receive == -1) {
@@ -38,7 +38,8 @@ void *listenerThread(void *arg) {
 
         // Check response and react accordingly
         if (equalLiteral(response.main, "LST")) {
-            int count = response.main.length / 37;
+            debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));
+            int count = ntohs(response.main.length) / 37;
             preparation_clearPlayers();
             PLAYER_LIST(0)
             PLAYER_LIST(1)
