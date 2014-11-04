@@ -12,6 +12,8 @@
 
 #include <pthread.h>
 
+void loginAddSocket(int sock);
+
 void *loginThread(void *arg);
 
 #endif

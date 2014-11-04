@@ -42,9 +42,17 @@ void *loginThread(void *arg) {
         char s[length + 1];
         s[length] = '\0';
         memcpy(s, response.loginRequest.name, length);
-        int id = userAdd(s);
+        int id = userCount();
+        userCountSet(id + 1);
+        for (int i = 0; i < id; i++) {
+            if (strcmp(userGet(i), s) == 0) {
+                id = -1;
+                break;
+            }
+        }
         if (id >= 0) {
             // Success, send LOK
+            userSet(s, id);
             response.main.type[0] = 'L';
             response.main.type[1] = 'O';
             response.main.type[2] = 'K';

@@ -10,16 +10,14 @@
 #ifndef USER_H
 #define USER_H
 
+void userCountSet(int c);
+
 int userCount(void);
 
 // Returns NULL on error
 const char *userGet(int index);
 
-// Returns -1 on error, else new index
-int userAdd(const char *name);
-
-// Returns 1 on success, 0 on error
-int userRemove(int index);
+void userSet(const char *name, int index);
 
 #endif
 
