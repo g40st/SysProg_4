@@ -104,12 +104,7 @@ int main(int argc, char **argv) {
     printf("Serveradresse: %s\n", inet_ntoa(serv_addr.sin_addr));
     printf("Serverport: %i\n", ntohs(serv_addr.sin_port));
 
-    struct rfcLoginRequest {
-        struct rfcMain main; // Length: 1 + length of name
-        uint8_t version; // This semester: 6
-        char name[31]; // Name, not '\0'-terminated!
-    };
-
+    // Send LoginRequest
     struct rfcLoginRequest lrq;
     lrq.main.type[0] = 'L';
     lrq.main.type[1] = 'R';
@@ -117,11 +112,53 @@ int main(int argc, char **argv) {
     lrq.main.length = htons(1 + strlen(username));
     lrq.version = RFC_VERSION_NUMBER;
     memcpy(lrq.name, username, strlen(username));
-
     if (send(client_socket, &lrq, RFC_LRQ_SIZE + strlen(username), 0) == -1) {
         printf("send: %s\n", strerror(errno));
         return 1;
     }
+
+    // Receive response
+    rfc response;
+    int receive = recv(client_socket, &response, RFC_MAX_SIZE, 0);
+    if (receive == -1) {
+        printf("receive: %s\n", strerror(errno));
+        return 1;
+    } else if (receive == 0) {
+        printf("Remote host closed connection\n");
+        return 1;
+    }
+
+    // Check response and react accordingly
+    if (equalLiteral(response.main, "LOK")) {
+        if (response.loginResponseOK.version != RFC_VERSION_NUMBER) {
+            printf("Wrong RFC version: %d\n", response.loginResponseOK.version);
+            return 1;
+        }
+
+        printf("We've been assigned ID no. %d\n", response.loginResponseOK.clientID);
+    } else if (equalLiteral(response.main, "ERR")) {
+        handleErrorWarningMessage(response);
+        return 1;
+    } else {
+        printf("Unexpected response: %c%c%c\n", response.main.type[0],
+                response.main.type[1], response.main.type[2]);
+        return 1;
+    }
+
+    // Send CatalogRequest
+    response.main.type[0] = 'C';
+    response.main.type[1] = 'R';
+    response.main.type[2] = 'Q';
+    response.main.length = htons(0);
+    if (send(client_socket, &response.main, RFC_BASE_SIZE, 0) == -1) {
+        printf("send: %s\n", strerror(errno));
+        return 1;
+    }
+
+    // TODO:
+    // - Start GUI Thread
+    // - Start Listener Thread
+    // - Start Fragewechsel Thread
 
     guiInit(&argc, &argv);
     preparation_showWindow();

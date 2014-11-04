@@ -13,6 +13,7 @@
 #include "common/question.h"
 
 #define RFC_VERSION_NUMBER 6
+#define RFC_MAX_SIZE 148
 
 #pragma pack(push,1)
 
@@ -105,5 +106,11 @@ typedef union {
 } rfc;
 
 #pragma pack(pop)
+
+// Returns 1 if equal, 0 if not
+int equalLiteral(struct rfcMain m, const char *s);
+
+// Returns 1 on success, 0 on error
+int handleErrorWarningMessage(rfc response);
 
 #endif
