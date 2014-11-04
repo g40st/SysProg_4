@@ -19,5 +19,13 @@ const char *userGet(int index);
 
 void userSet(const char *name, int index);
 
+void scoreSet(int s, int i);
+
+int scoreGet(int i);
+
+void socketSet(int s, int i);
+
+int socketGet(int i);
+
 #endif
 

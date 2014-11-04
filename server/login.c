@@ -17,6 +17,7 @@
 
 #include "common/rfc.h"
 #include "common/util.h"
+#include "score.h"
 #include "user.h"
 #include "login.h"
 
@@ -55,7 +56,6 @@ static void loginHandleSocket(int socket) {
         s[length] = '\0';
         memcpy(s, response.loginRequest.name, length);
         int id = userCount();
-        userCountSet(id + 1);
         for (int i = 0; i < id; i++) {
             if (strcmp(userGet(i), s) == 0) {
                 id = -1;
@@ -63,8 +63,13 @@ static void loginHandleSocket(int socket) {
             }
         }
         if (id >= 0) {
-            // Success, send LOK
+            // Success
+            userCountSet(id + 1);
             userSet(s, id);
+            socketSet(socket, id);
+            scoreSet(0, id);
+
+            // Send LOK
             response.main.type[0] = 'L';
             response.main.type[1] = 'O';
             response.main.type[2] = 'K';

@@ -18,10 +18,12 @@
 #include <ctype.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include "common/rfc.h"
 #include "common/util.h"
 #include "gui/gui_interface.h"
+#include "listener.h"
 
 void show_help() {
     printf("Available options:\n");
@@ -182,10 +184,12 @@ int main(int argc, char **argv) {
     }
     */
 
-    // TODO:
-    // - Start GUI Thread
-    // - Start Listener Thread
-    // - Start Fragewechsel Thread
+    debugPrint("Starting Threads...");
+    pthread_t threads[1];
+    if (pthread_create(&threads[0], NULL, listenerThread, &client_socket) != 0) {
+        printf("pthread_create: %s\n", strerror(errno));
+        return 1;
+    }
 
     guiMain();
 

@@ -15,7 +15,9 @@
 #include "common/util.h"
 #include "user.h"
 
-static char *users[4] = { NULL, NULL, NULL, NULL };
+static char *users[MAX_PLAYERS] = { NULL, NULL, NULL, NULL };
+static int scores[MAX_PLAYERS] = { 0, 0, 0, 0 };
+static int sockets[MAX_PLAYERS] = { -1, -1, -1, -1 };
 static int numUsers = 0;
 static pthread_mutex_t mutexUsers = PTHREAD_MUTEX_INITIALIZER;
 
@@ -56,5 +58,41 @@ void userSet(const char *name, int index) {
         }
         pthread_mutex_unlock(&mutexUsers);
     }
+}
+
+void scoreSet(int s, int i) {
+    pthread_mutex_lock(&mutexUsers);
+    if ((i >= 0) && (i < MAX_PLAYERS)) {
+        scores[i] = s;
+    }
+    pthread_mutex_unlock(&mutexUsers);
+}
+
+int scoreGet(int i) {
+    int s = 0;
+    pthread_mutex_lock(&mutexUsers);
+    if ((i >= 0) && (i < numUsers)) {
+        s = scores[i];
+    }
+    pthread_mutex_unlock(&mutexUsers);
+    return s;
+}
+
+void socketSet(int s, int i) {
+    pthread_mutex_lock(&mutexUsers);
+    if ((i >= 0) && (i < MAX_PLAYERS)) {
+        sockets[i] = s;
+    }
+    pthread_mutex_unlock(&mutexUsers);
+}
+
+int socketGet(int i) {
+    int s = 0;
+    pthread_mutex_lock(&mutexUsers);
+    if ((i >= 0) && (i < numUsers)) {
+        s = sockets[i];
+    }
+    pthread_mutex_unlock(&mutexUsers);
+    return s;
 }
 

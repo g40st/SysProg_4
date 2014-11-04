@@ -7,7 +7,8 @@
  * main.c: Hauptprogramm des Servers
  */
 
-#include "server/login.h"
+#include "login.h"
+#include "score.h"
 #include "common/util.h"
 
 #include <stdio.h>
@@ -117,8 +118,12 @@ int main(int argc, char **argv) {
     infoPrint("Serverport: %i", ntohs(server.sin_port));
 
     debugPrint("Starting Threads...");
-    pthread_t threads[1];
-    if (pthread_create(threads, NULL, loginThread, NULL) != 0) {
+    pthread_t threads[2];
+    if (pthread_create(&threads[0], NULL, loginThread, NULL) != 0) {
+        printf("pthread_create: %s\n", strerror(errno));
+        return 1;
+    }
+    if (pthread_create(&threads[1], NULL, scoreThread, NULL) != 0) {
         printf("pthread_create: %s\n", strerror(errno));
         return 1;
     }
