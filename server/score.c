@@ -19,6 +19,9 @@
 #include "user.h"
 #include "score.h"
 
+static int scoreFlag = 0;
+static pthread_mutex_t scoreMutex = PTHREAD_MUTEX_INITIALIZER;
+
 #define PLAYER_LIST(x) if (c > x) { \
     memcpy(list.player##x.name, userGet(x), strlen(userGet(x))); \
     memset(list.player##x.name + strlen(userGet(x)), 0, 32 - strlen(userGet(x))); \
@@ -48,17 +51,22 @@ static void sendPlayerListToAll() {
     }
 }
 
+void scoreMarkForUpdate(void) {
+    pthread_mutex_lock(&scoreMutex);
+    scoreFlag++;
+    pthread_mutex_unlock(&scoreMutex);
+}
+
 void *scoreThread(void *arg) {
-    int oldCount = userCount();
-
     while (1) {
-        // TODO watch for score-change flag, send LST
+        pthread_mutex_lock(&scoreMutex);
+        int sf = scoreFlag;
+        if (sf > 0)
+            scoreFlag = 0;
+        pthread_mutex_unlock(&scoreMutex);
 
-        int newCount = userCount();
-        if (newCount != oldCount) {
-            oldCount = newCount;
+        if (sf > 0)
             sendPlayerListToAll();
-        }
     }
 
     return NULL;

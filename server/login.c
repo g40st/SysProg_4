@@ -68,6 +68,7 @@ static void loginHandleSocket(int socket) {
             userSet(s, id);
             socketSet(socket, id);
             scoreSet(0, id);
+            scoreMarkForUpdate();
 
             // Send LOK
             response.main.type[0] = 'L';

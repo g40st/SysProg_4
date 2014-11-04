@@ -10,6 +10,8 @@
 #ifndef SCORE_H
 #define SCORE_H
 
+void scoreMarkForUpdate(void);
+
 void *scoreThread(void *arg);
 
 #endif
