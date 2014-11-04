@@ -90,7 +90,7 @@ static void loginHandleSocket(int socket) {
             response.main.type[2] = 'R';
             response.main.length = htons(2);
             response.errorWarning.subtype = 1; // Error
-            memcpy(&response.errorWarning.message, "Login Error", 11);
+            memcpy(response.errorWarning.message, "Login Error", 11);
             if (send(socket, &response, RFC_ERR_SIZE + 11, 0) == -1) {
                 printf("send: %s\n", strerror(errno));
                 return;
