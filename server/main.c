@@ -22,6 +22,15 @@
 #include <errno.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <sys/select.h>
+#include <signal.h>
+
+static int running = 1;
+
+void intHandler(int dummy) {
+    running = 0;
+    debugPrint("Caught SIGINT, aborting...");
+}
 
 #define LOCKFILE "/tmp/serverGroup01"
 
@@ -139,32 +148,58 @@ int main(int argc, char **argv) {
         errorPrint("socket: %s", strerror(errno));
         return 1;
     }
+    signal(SIGINT, intHandler);
     if (bind(listen_socket, (struct sockaddr*) &server, sizeof(struct sockaddr_in)) == -1) {
         errorPrint("bind: %s", strerror(errno));
         close(listen_socket);
         return 1;
     }
 
+    fd_set fds;
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = 250000000; // 250ms
+    sigset_t blockset;
+    sigfillset(&blockset);
+    sigdelset(&blockset, SIGINT);
+
     debugPrint("Waiting for connections...");
-    while (1) {
+    while (running) {
         if (listen(listen_socket, MAX_QUERYS) == -1) {
             errorPrint("listen: %s", strerror(errno));
             close(listen_socket);
             return 1;
         }
-
-        struct sockaddr_in remote_host;
-        socklen_t sin_size = sizeof(struct sockaddr_in);
-        int client_socket = accept(listen_socket, (struct sockaddr *) &remote_host, &sin_size);
-        if (client_socket == -1) {
-            errorPrint("accept: %s", strerror(errno));
-            close(listen_socket);
-            return 1;
+        FD_ZERO(&fds);
+        FD_SET(listen_socket, &fds);
+        int retval = pselect(listen_socket + 1, &fds, NULL, NULL, &ts, &blockset);
+        if (retval == -1) {
+            if (errno == EINTR) {
+                // SIGINT was caught
+                close(listen_socket);
+                return 0;
+            } else {
+                errnoPrint("select");
+                close(listen_socket);
+                return 1;
+            }
+        } else if (retval == 0) {
+            continue;
+        } else {
+            struct sockaddr_in remote_host;
+            socklen_t sin_size = sizeof(struct sockaddr_in);
+            int client_socket = accept(listen_socket, (struct sockaddr *) &remote_host, &sin_size);
+            if (client_socket == -1) {
+                errorPrint("accept: %s", strerror(errno));
+                close(listen_socket);
+                return 1;
+            }
+            debugPrint("Got a new connection! Sending to LoginThread...");
+            loginAddSocket(client_socket);
         }
-
-        debugPrint("Got a new connection! Sending to LoginThread...");
-        loginAddSocket(client_socket);
     }
+
+    close(listen_socket);
 
     pthread_exit(NULL);
     return 0;
