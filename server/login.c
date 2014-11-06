@@ -7,7 +7,6 @@
  * login.c: Implementierung des Logins
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -39,65 +38,71 @@ static void loginHandleSocket(int socket) {
     rfc response;
     int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
     if (receive == -1) {
-        printf("receive: %s\n", strerror(errno));
+        errnoPrint("receive");
         return;
     } else if (receive == 0) {
-        printf("Remote host closed connection\n");
+        errorPrint("Remote host closed connection");
         return;
     }
 
     if (equalLiteral(response.main, "LRQ")) {
+        // Check RFC version
         if (response.loginRequest.version != RFC_VERSION_NUMBER) {
-            printf("Wrong RFC version: %d\n", response.loginRequest.version);
+            sendErrorMessage(socket, "Login Error: Wrong RFC version used");
+            infoPrint("Login attempt with wrong RFC version: %d", response.loginRequest.version);
             return;
         }
 
+        // Store username string
         int length = ntohs(response.main.length) - 1;
         char s[length + 1];
         s[length] = '\0';
         memcpy(s, response.loginRequest.name, length);
+
+        // Detect empty name string
+        if (length == 0) {
+            sendErrorMessage(socket, "Login Error: A username is required");
+            infoPrint("Login attempt without a name");
+            return;
+        }
+
+        // Detect duplicate names
         int id = userCount();
         for (int i = 0; i < id; i++) {
             if (strcmp(userGet(i), s) == 0) {
-                id = -1;
-                break;
+                sendErrorMessage(socket, "Login error: Name already in use");
+                infoPrint("Login attempt with duplicate name: \"%s\"", s);
+                return;
             }
         }
 
-        if ((id >= 0) && (id < MAX_PLAYERS)) {
-            // Success
-            userCountSet(id + 1);
-            userSet(s, id);
-            socketSet(socket, id);
-            scoreSet(0, id);
-            scoreMarkForUpdate();
+        // Detect too many players
+        if (id >= MAX_PLAYERS) {
+            sendErrorMessage(socket, "Login Error: Server is full");
+            infoPrint("Login attempt while server is full: \"%s\"", s);
+            return;
+        }
 
-            // Send LOK
-            response.main.type[0] = 'L';
-            response.main.type[1] = 'O';
-            response.main.type[2] = 'K';
-            response.main.length = htons(2);
-            response.loginResponseOK.version = RFC_VERSION_NUMBER;
-            response.loginResponseOK.clientID = (uint8_t)id;
-            if (send(socket, &response, RFC_LOK_SIZE, 0) == -1) {
-                printf("send: %s\n", strerror(errno));
-                return;
-            }
-        } else {
-            // Error, send ERR
-            response.main.type[0] = 'E';
-            response.main.type[1] = 'R';
-            response.main.type[2] = 'R';
-            response.main.length = htons(RFC_ERR_SIZE + 11);
-            response.errorWarning.subtype = 1; // Error
-            memcpy(response.errorWarning.message, "Login Error", 11);
-            if (send(socket, &response, RFC_ERR_SIZE + 11, 0) == -1) {
-                printf("send: %s\n", strerror(errno));
-                return;
-            }
+        // Write new user data into "database"
+        userCountSet(id + 1);
+        userSet(s, id);
+        socketSet(socket, id);
+        scoreSet(0, id);
+        scoreMarkForUpdate();
+
+        // Send LOK message
+        response.main.type[0] = 'L';
+        response.main.type[1] = 'O';
+        response.main.type[2] = 'K';
+        response.main.length = htons(2);
+        response.loginResponseOK.version = RFC_VERSION_NUMBER;
+        response.loginResponseOK.clientID = (uint8_t)id;
+        if (send(socket, &response, RFC_LOK_SIZE, 0) == -1) {
+            errnoPrint("send");
+            return;
         }
     } else {
-        printf("Unexpected response: %c%c%c\n", response.main.type[0],
+        errorPrint("Unexpected response: %c%c%c", response.main.type[0],
                 response.main.type[1], response.main.type[2]);
         return;
     }
