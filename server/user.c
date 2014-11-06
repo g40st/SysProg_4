@@ -28,7 +28,7 @@ void userCountSet(int c) {
         numUsers = c;
         pthread_mutex_unlock(&mutexUsers);
     } else {
-        //debugPrint("Invalid userCountSet: %d", c);
+        debugPrint("Invalid userCountSet: %d", c);
     }
 }
 
@@ -48,7 +48,7 @@ const char *userGet(int index) {
         ret = users[index];
         //debugPrint("userGet: %d -> %s", index, ret);
     } else {
-        //debugPrint("Invalid userGet: %d", index);
+        debugPrint("Invalid userGet: %d", index);
     }
     pthread_mutex_unlock(&mutexUsers);
     return ret;
@@ -60,7 +60,7 @@ void userSet(const char *name, int index) {
         //debugPrint("userSet: %d -> %s", index, name);
         users[index] = malloc((strlen(name) + 1) * sizeof(char));
         if (users[index] == NULL) {
-            errorPrint("Not enough memory!");
+            errorPrint("userSet: Not enough memory!");
         } else {
             strcpy(users[index], name);
         }
@@ -74,7 +74,7 @@ void scoreSet(int s, int i) {
         scores[i] = s;
         //debugPrint("scoreSet: %d -> %d", s, i);
     } else {
-        //debugPrint("Invalid scoreSet: %d -> %d", s, i);
+        debugPrint("Invalid scoreSet: %d -> %d", s, i);
     }
     pthread_mutex_unlock(&mutexUsers);
 }
@@ -86,7 +86,7 @@ int scoreGet(int i) {
         s = scores[i];
         //debugPrint("scoreGet: %d -> %d", s, i);
     } else {
-        //debugPrint("Invalid scoreGet: %d", i);
+        debugPrint("Invalid scoreGet: %d", i);
     }
     pthread_mutex_unlock(&mutexUsers);
     return s;
@@ -98,7 +98,7 @@ void socketSet(int s, int i) {
         sockets[i] = s;
         //debugPrint("socketSet: %d -> %d", s, i);
     } else {
-        //debugPrint("Invalid socketSet: %d -> %d", s, i);
+        debugPrint("Invalid socketSet: %d -> %d", s, i);
     }
     pthread_mutex_unlock(&mutexUsers);
 }
@@ -110,7 +110,7 @@ int socketGet(int i) {
         s = sockets[i];
         //debugPrint("socketGet: %d -> %d", s, i);
     } else {
-        //debugPrint("Invalid socketGet: %d", i);
+        debugPrint("Invalid socketGet: %d", i);
     }
     pthread_mutex_unlock(&mutexUsers);
     return s;
