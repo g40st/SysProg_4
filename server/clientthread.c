@@ -25,14 +25,7 @@ void *clientThread(void *arg) {
     while (1) {
         if ((!present) && userGetPresent(0)) {
             present = 1;
-            FILE * writePipe = fdopen(getWritePipe(), "w");
-            if (writePipe == NULL) {
-                errnoPrint("fdopen");
-            }
-            if (fprintf(writePipe, "%s\n", BROWSE_CMD) <= 0) {
-                errnoPrint("fprintf");
-            }
-            fflush(writePipe);
+            sendLoaderCommand(BROWSE_CMD);
         }
 
         loopsleep();

@@ -7,6 +7,8 @@
  * catalog.c: Implementierung der Fragekatalog-Behandlung und Loader-Steuerung
  */
 
+#include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include "common/server_loader_protocol.h"
@@ -15,24 +17,25 @@
 
 static int stdinPipe[2] = { -1, -1 };
 static int stdoutPipe[2] = { -1, -1 };
-
-int getWritePipe(void) {
-    return stdinPipe[1];
-}
-
-int getReadPipe(void) {
-    return stdoutPipe[0];
-}
+static FILE *writePipe = NULL;
 
 int createPipes(void) {
     if (pipe(stdinPipe) == -1) {
         errnoPrint("pipe in");
         return 0;
     }
+
     if (pipe(stdoutPipe) == -1) {
         errnoPrint("pipe out");
         return 0;
     }
+
+    writePipe = fdopen(stdinPipe[1], "w");
+    if (writePipe == NULL) {
+        errnoPrint("fdopen");
+        return 0;
+    }
+
     return 1;
 }
 
@@ -55,5 +58,12 @@ int forkLoader(void) {
         return 0;
     }
     return 1;
+}
+
+void sendLoaderCommand(const char *cmd) {
+    if (fprintf(writePipe, "%s\n", cmd) <= 0) {
+        errnoPrint("fprintf");
+    }
+    fflush(writePipe);
 }
 

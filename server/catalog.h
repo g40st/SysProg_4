@@ -13,8 +13,7 @@
 int createPipes(void);
 int forkLoader(void);
 
-int getWritePipe(void);
-int getReadPipe(void);
+void sendLoaderCommand(const char *cmd);
 
 #endif
 
