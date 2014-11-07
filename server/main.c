@@ -10,7 +10,9 @@
 #include "login.h"
 #include "score.h"
 #include "user.h"
+#include "clientthread.h"
 #include "common/util.h"
+#include "main.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,15 +29,26 @@
 #include <signal.h>
 
 static int running = 1;
+static int stdinPipe[2];
+static int stdoutPipe[2];
 
-void intHandler(int dummy) {
+int getWritePipe() {
+    return stdinPipe[1];
+}
+
+int getReadPipe() {
+    return stdoutPipe[0];
+}
+
+
+static void intHandler(int dummy) {
     running = 0;
     debugPrint("Caught SIGINT, aborting...");
 }
 
 #define LOCKFILE "/tmp/serverGroup01"
 
-int singleton(const char *lockfile) {
+static int singleton(const char *lockfile) {
     int file = open(lockfile, O_WRONLY | O_CREAT, 0644);
     if (file < 0) {
         perror("Cannot create pid file");
@@ -69,7 +82,7 @@ int singleton(const char *lockfile) {
     return 0;
 }
 
-void show_help() {
+static void show_help() {
     printf("Available options:\n");
     printf("    -p --port       specify a port (argument)\n");
     printf("    -v --verbose    enable debug output\n");
@@ -133,26 +146,67 @@ int main(int argc, char **argv) {
 
     infoPrint("Serverport: %i", ntohs(server.sin_port));
 
+    // Pipes and Forking
+    pid_t forkResult;
+
+    debugPrint("generate Pipes");
+    if (pipe(stdinPipe) == -1) {
+        perror("pipe in");
+        return 1;
+    }
+
+    if (pipe(stdoutPipe) == -1) {
+        perror("pipe out");
+        return 1;
+    }
+
+    debugPrint("start forking (Loader)");
+    forkResult = fork();
+    if (forkResult < 0) {
+        errnoPrint("fork");
+        return 1;
+    } else if(forkResult == 0) {
+
+        if(dup2(stdinPipe[0], STDIN_FILENO) == -1) {
+            errnoPrint("dup2(stdinPipe[0], STDIN_FILENO)");
+            return 1;
+        }
+
+        if(dup2(stdoutPipe[1], STDOUT_FILENO) == -1) {
+            errnoPrint("dup2(stdoutPipe[1], STDOUT_FILENO)");
+            return 1;
+        }
+
+        execl("bin/loader", "loader", "catalog", "-d", NULL);
+        perror("ecec:");
+        return 1;
+
+    }
+
     debugPrint("Starting Threads...");
-    pthread_t threads[2];
+    pthread_t threads[3];
     if (pthread_create(&threads[0], NULL, loginThread, NULL) != 0) {
-        errorPrint("pthread_create: %s", strerror(errno));
+        errnoPrint("pthread_create");
         return 1;
     }
     if (pthread_create(&threads[1], NULL, scoreThread, NULL) != 0) {
-        errorPrint("pthread_create: %s", strerror(errno));
+        errnoPrint("pthread_create");
+        return 1;
+    }
+    if (pthread_create(&threads[2], NULL, clientThread, NULL) != 0) {
+        errnoPrint("pthread_create");
         return 1;
     }
 
     debugPrint("Creating socket...");
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_socket == -1) {
-        errorPrint("socket: %s", strerror(errno));
+        errnoPrint("socket");
         return 1;
     }
     signal(SIGINT, intHandler);
     if (bind(listen_socket, (struct sockaddr*) &server, sizeof(struct sockaddr_in)) == -1) {
-        errorPrint("bind: %s", strerror(errno));
+        errnoPrint("bind");
         close(listen_socket);
         return 1;
     }
@@ -168,7 +222,7 @@ int main(int argc, char **argv) {
     debugPrint("Waiting for connections...");
     while (running) {
         if (listen(listen_socket, MAX_QUERYS) == -1) {
-            errorPrint("listen: %s", strerror(errno));
+            errnoPrint("listen");
             close(listen_socket);
             return 1;
         }
@@ -192,7 +246,7 @@ int main(int argc, char **argv) {
             socklen_t sin_size = sizeof(struct sockaddr_in);
             int client_socket = accept(listen_socket, (struct sockaddr *) &remote_host, &sin_size);
             if (client_socket == -1) {
-                errorPrint("accept: %s", strerror(errno));
+                errnoPrint("accept");
                 close(listen_socket);
                 return 1;
             }

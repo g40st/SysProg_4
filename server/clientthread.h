@@ -10,6 +10,8 @@
 #ifndef CLIENTTHREAD_H
 #define CLIENTTHREAD_H
 
-/* ... */
+#include <pthread.h>
+
+void *clientThread(void *arg);
 
 #endif
