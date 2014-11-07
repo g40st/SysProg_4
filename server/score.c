@@ -30,7 +30,7 @@ static pthread_mutex_t scoreMutex = PTHREAD_MUTEX_INITIALIZER;
     list.player##x.id = x; \
 }
 
-static void sendPlayerList(int socket) {
+static void sendPlayerListToAll() {
     int c = userCount();
     if (c <= 0)
         return;
@@ -44,14 +44,13 @@ static void sendPlayerList(int socket) {
     PLAYER_LIST(1)
     PLAYER_LIST(2)
     PLAYER_LIST(3)
-    if (send(socket, &list, RFC_LST_SIZE(c), 0) == -1) {
-        errorPrint("send: %s", strerror(errno));
-    }
-}
 
-static void sendPlayerListToAll() {
-    for (int i = 0; i < userCount(); i++) {
-        sendPlayerList(userGetSocket(i));
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (userGetPresent(i)) {
+            if (send(userGetSocket(i), &list, RFC_LST_SIZE(c), 0) == -1) {
+                errorPrint("send: %s", strerror(errno));
+            }
+        }
     }
 }
 
