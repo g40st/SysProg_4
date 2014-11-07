@@ -184,6 +184,7 @@ int main(int argc, char **argv) {
         if (listen(listen_socket, MAX_QUERYS) == -1) {
             errnoPrint("listen");
             close(listen_socket);
+            cleanCategories();
             return 1;
         }
         FD_ZERO(&fds);
@@ -193,10 +194,12 @@ int main(int argc, char **argv) {
             if (errno == EINTR) {
                 // SIGINT was caught
                 close(listen_socket);
+                cleanCategories();
                 return 0;
             } else {
                 errnoPrint("select");
                 close(listen_socket);
+                cleanCategories();
                 return 1;
             }
         } else if (retval == 0) {
@@ -208,6 +211,7 @@ int main(int argc, char **argv) {
             if (client_socket == -1) {
                 errnoPrint("accept");
                 close(listen_socket);
+                cleanCategories();
                 return 1;
             }
             debugPrint("Got a new connection! Sending to LoginThread...");
@@ -216,6 +220,7 @@ int main(int argc, char **argv) {
     }
 
     close(listen_socket);
+    cleanCategories();
 
     pthread_exit(NULL);
     return 0;

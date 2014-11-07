@@ -93,6 +93,7 @@ void readLineLoader(char *buff, int size) {
     if (fgets(buff, size - 1, readPipe) == NULL)
         errnoPrint("fgets");
 
+    buff[size - 1] = '\0';
     if (buff[strlen(buff) - 1] == '\n')
         buff[strlen(buff) - 1] = '\0';
 }
@@ -129,7 +130,7 @@ void loaderCloseSharedMemory(void) {
     shm_data = NULL;
 }
 
-void *getSharedMemory() {
+void *getSharedMemory(void) {
     return shm_data;
 }
 

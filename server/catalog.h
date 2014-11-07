@@ -18,7 +18,7 @@ void readLineLoader(char *buff, int size);
 
 int loaderOpenSharedMemory(int size);
 void loaderCloseSharedMemory(void);
-void *getSharedMemory();
+void *getSharedMemory(void);
 
 #endif
 
