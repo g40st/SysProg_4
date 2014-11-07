@@ -12,7 +12,6 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <errno.h>
 #include <netinet/in.h>
 
 #include "common/rfc.h"
@@ -20,6 +19,7 @@
 #include "gui/gui_interface.h"
 #include "listener.h"
 
+static int running = 1;
 static GamePhase_t gamePhase = PHASE_PREPARATION;
 static pthread_mutex_t mutexUsers = PTHREAD_MUTEX_INITIALIZER;
 
@@ -36,15 +36,28 @@ GamePhase_t getGamePhase(void) {
     return r;
 }
 
+int getRunning(void) {
+    pthread_mutex_lock(&mutexUsers);
+    int r = running;
+    pthread_mutex_unlock(&mutexUsers);
+    return r;
+}
+
+void stopThreads(void) {
+    pthread_mutex_lock(&mutexUsers);
+    running = 0;
+    pthread_mutex_unlock(&mutexUsers);
+}
+
 void *listenerThread(void *arg) {
     int socket = *((int *)arg);
     rfc response;
     debugPrint("ListenerThread is starting its loop...");
-    while (1) {
+    while (getRunning()) {
         // Receive message
         int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
         if (receive == -1) {
-            errorPrint("receive: %s", strerror(errno));
+            errnoPrint("receive");
             return NULL;
         } else if (receive == 0) {
             errorPrint("Remote host closed connection");
@@ -65,14 +78,18 @@ void *listenerThread(void *arg) {
                 char buff[len + 1];
                 strncpy(buff, response.catalogChange.filename, len);
                 buff[len] = '\0';
-                if (equalLiteral(response.main, "CCH")) {
-                    // Mark selected catalog
-                    debugPrint("Received CatalogChange: \"%s\"", buff);
-                    preparation_selectCatalog(buff);
+                if (ntohs(response.main.length) == 0) {
+                    debugPrint("Received Catalog end marker");
                 } else {
-                    // Display specified catalog
-                    debugPrint("Received CatalogResponse: \"%s\"", buff);
-                    preparation_addCatalog(buff);
+                    if (equalLiteral(response.main, "CCH")) {
+                        // Mark selected catalog
+                        debugPrint("Received CatalogChange: \"%s\"", buff);
+                        preparation_selectCatalog(buff);
+                    } else {
+                        // Display specified catalog
+                        debugPrint("Received CatalogResponse: \"%s\"", buff);
+                        preparation_addCatalog(buff);
+                    }
                 }
             } else if (equalLiteral(response.main, "STG")) {
                 // Start Game Phase

@@ -23,6 +23,8 @@
 #include "common/rfc.h"
 #include "common/util.h"
 #include "gui/gui_interface.h"
+#include "fragewechsel.h"
+#include "gui.h"
 #include "listener.h"
 
 static void show_help() {
@@ -185,22 +187,28 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /*
     debugPrint("Sending CatalogRequest...");
     response.main.type[0] = 'C';
     response.main.type[1] = 'R';
     response.main.type[2] = 'Q';
     response.main.length = htons(0);
     if (send(client_socket, &response.main, RFC_BASE_SIZE, 0) == -1) {
-        errorPrint("send: %s", strerror(errno));
+        errnoPrint("send");
         return 1;
     }
-    */
 
     debugPrint("Starting Threads...");
-    pthread_t threads[1];
+    pthread_t threads[3];
     if (pthread_create(&threads[0], NULL, listenerThread, &client_socket) != 0) {
-        errorPrint("pthread_create: %s", strerror(errno));
+        errnoPrint("pthread_create");
+        return 1;
+    }
+    if (pthread_create(&threads[0], NULL, guiThread, &client_socket) != 0) {
+        errnoPrint("pthread_create");
+        return 1;
+    }
+    if (pthread_create(&threads[0], NULL, questionThread, &client_socket) != 0) {
+        errnoPrint("pthread_create");
         return 1;
     }
 
@@ -209,28 +217,9 @@ int main(int argc, char **argv) {
 
     debugPrint("Destroying UI...");
     guiDestroy();
+    close(client_socket);
+
     debugPrint("Finished!");
     return 0;
 }
 
-void preparation_onCatalogChanged(const char *newSelection) {
-    infoPrint("preparation_onCatalogChanged: %s", newSelection);
-}
-
-void preparation_onStartClicked(const char *currentSelection) {
-    infoPrint("preparation_onStartClicked: %s", currentSelection);
-}
-
-void preparation_onWindowClosed(void) {
-    infoPrint("preparation_onWindowClosed");
-    guiQuit();
-}
-
-void game_onSubmitClicked(unsigned char selectedAnswers) {
-    infoPrint("game_onSubmitClicked: %u", (unsigned)selectedAnswers);
-}
-
-void game_onWindowClosed(void) {
-    infoPrint("game_onWindowClosed");
-    guiQuit();
-}

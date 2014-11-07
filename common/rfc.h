@@ -60,6 +60,7 @@ struct rfcStartGame {
     char filename[MAX_STRING_LENGTH]; // Filename. Not '\0'-terminated!
 };
 
+#define RFC_QAN_SIZE (RFC_BASE_SIZE + 1)
 struct rfcQuestionAnswered {
     struct rfcMain main; // Length: 1
     uint8_t selection; // Bitmask of selected answers
