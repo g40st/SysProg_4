@@ -73,23 +73,28 @@ void *listenerThread(void *arg) {
                 for (int i = 0; i < count; i++) {
                     preparation_addPlayer(response.playerList.players[i].name);
                 }
-            } else if (equalLiteral(response.main, "CRE") || equalLiteral(response.main, "CCH")) {
+            } else if (equalLiteral(response.main, "CCH")) {
+                // Mark selected catalog
                 int len = ntohs(response.main.length);
                 char buff[len + 1];
                 strncpy(buff, response.catalogChange.filename, len);
                 buff[len] = '\0';
-                if (ntohs(response.main.length) == 0) {
-                    debugPrint("Received Catalog end marker");
-                } else {
-                    if (equalLiteral(response.main, "CCH")) {
-                        // Mark selected catalog
-                        debugPrint("Received CatalogChange: \"%s\"", buff);
-                        preparation_selectCatalog(buff);
-                    } else {
-                        // Display specified catalog
-                        debugPrint("Received CatalogResponse: \"%s\"", buff);
-                        preparation_addCatalog(buff);
-                    }
+                debugPrint("Received CatalogChange: \"%s\"", buff);
+                preparation_selectCatalog(buff);
+            } else if (equalLiteral(response.main, "CRE")) {
+                // Display specified catalogs
+                debugPrint("Received CatalogResponse");
+                int len = ntohs(response.main.length);
+                void *vp = &response.catalogResponse;
+                struct rfcCatalog *cat = (struct rfcCatalog *)vp;
+                while (len != 0) {
+                    char buff[len + 1];
+                    strncpy(buff, cat->filename, len);
+                    buff[len] = '\0';
+                    preparation_addCatalog(buff);
+                    vp += RFC_BASE_SIZE + len;
+                    cat = (struct rfcCatalog *)vp;
+                    len = ntohs(cat->main.length);
                 }
             } else if (equalLiteral(response.main, "STG")) {
                 // Start Game Phase

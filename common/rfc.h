@@ -13,7 +13,7 @@
 #include "common/question.h"
 
 #define RFC_VERSION_NUMBER 6
-#define MAX_STRING_LENGTH 1024
+#define MAX_STRING_LENGTH 256
 #define RFC_MAX_SIZE (RFC_BASE_SIZE + MAX_STRING_LENGTH + 1)
 
 #pragma pack(push,1)

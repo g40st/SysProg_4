@@ -40,7 +40,6 @@ int getReadPipe() {
     return stdoutPipe[0];
 }
 
-
 static void intHandler(int dummy) {
     running = 0;
     debugPrint("Caught SIGINT, aborting...");
@@ -149,38 +148,36 @@ int main(int argc, char **argv) {
     // Pipes and Forking
     pid_t forkResult;
 
-    debugPrint("generate Pipes");
+    debugPrint("Creating Pipes...");
     if (pipe(stdinPipe) == -1) {
-        perror("pipe in");
+        errnoPrint("pipe in");
         return 1;
     }
 
     if (pipe(stdoutPipe) == -1) {
-        perror("pipe out");
+        errnoPrint("pipe out");
         return 1;
     }
 
-    debugPrint("start forking (Loader)");
+    debugPrint("Forking to run loader...");
     forkResult = fork();
     if (forkResult < 0) {
         errnoPrint("fork");
         return 1;
-    } else if(forkResult == 0) {
-
-        if(dup2(stdinPipe[0], STDIN_FILENO) == -1) {
+    } else if (forkResult == 0) {
+        if (dup2(stdinPipe[0], STDIN_FILENO) == -1) {
             errnoPrint("dup2(stdinPipe[0], STDIN_FILENO)");
             return 1;
         }
 
-        if(dup2(stdoutPipe[1], STDOUT_FILENO) == -1) {
+        if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1) {
             errnoPrint("dup2(stdoutPipe[1], STDOUT_FILENO)");
             return 1;
         }
 
         execl("bin/loader", "loader", "catalog", "-d", NULL);
-        perror("ecec:");
+        errnoPrint("execl");
         return 1;
-
     }
 
     debugPrint("Starting Threads...");
