@@ -23,13 +23,6 @@
 static int scoreFlag = 0;
 static pthread_mutex_t scoreMutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define PLAYER_LIST(x) if (userGetPresent(x)) { \
-    memcpy(list.player##x.name, userGetName(x), strlen(userGetName(x))); \
-    memset(list.player##x.name + strlen(userGetName(x)), 0, 32 - strlen(userGetName(x))); \
-    list.player##x.points = htonl(userGetScore(x)); \
-    list.player##x.id = x; \
-}
-
 static void sendPlayerListToAll() {
     int c = userCount();
     if (c <= 0)
@@ -40,15 +33,19 @@ static void sendPlayerListToAll() {
     list.main.type[1] = 'S';
     list.main.type[2] = 'T';
     list.main.length = htons(37 * c);
-    PLAYER_LIST(0)
-    PLAYER_LIST(1)
-    PLAYER_LIST(2)
-    PLAYER_LIST(3)
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        const char *name = userGetName(i);
+        size_t len = strlen(name);
+        memcpy(list.players[i].name, name, len);
+        memset(list.players[i].name + len, 0, 32 - len);
+        list.players[i].points = htonl(userGetScore(i));
+        list.players[i].id = i;
+    }
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (userGetPresent(i)) {
             if (send(userGetSocket(i), &list, RFC_LST_SIZE(c), 0) == -1) {
-                errorPrint("send: %s", strerror(errno));
+                errnoPrint("send");
             }
         }
     }

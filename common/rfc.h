@@ -52,10 +52,7 @@ struct rfcPlayer {
 #define RFC_LST_SIZE(x) (RFC_BASE_SIZE + ((x) * 37))
 struct rfcPlayerList {
     struct rfcMain main; // Length: 37 * playerCount
-    struct rfcPlayer player0; // Use only if length is big enough!
-    struct rfcPlayer player1; // Use only if length is big enough!
-    struct rfcPlayer player2; // Use only if length is big enough!
-    struct rfcPlayer player3; // Use only if length is big enough!
+    struct rfcPlayer players[4]; // Use only if length is big enough!
 };
 
 struct rfcStartGame {
