@@ -64,6 +64,7 @@ SERVER_MODULES=server/catalog.o \
 	       common/util.o
 
 CLIENT_MODULES=client/fragewechsel.o \
+		   client/gui.o \
 	       client/listener.o \
 	       client/main.o \
 	       common/rfc.o \
