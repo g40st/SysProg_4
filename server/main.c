@@ -9,6 +9,7 @@
 
 #include "login.h"
 #include "score.h"
+#include "user.h"
 #include "common/util.h"
 
 #include <stdio.h>
@@ -79,6 +80,7 @@ int main(int argc, char **argv) {
     setProgName(argv[0]);
     debugDisable();
     infoPrint("Server Gruppe 01");
+    userInit();
 
     debugPrint("Making sure we're running only once...");
     if (singleton(LOCKFILE) != 0)

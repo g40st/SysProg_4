@@ -10,22 +10,21 @@
 #ifndef USER_H
 #define USER_H
 
-void userCountSet(int c);
+void userInit(void);
 
 int userCount(void);
+int userFirstFreeSlot(void);
 
-// Returns NULL on error
-const char *userGet(int index);
+void userSetPresent(int index, int present);
+int userGetPresent(int index);
 
-void userSet(const char *name, int index);
+void userSetSocket(int index, int socket);
+int userGetSocket(int index);
 
-void scoreSet(int s, int i);
+void userSetName(int index, const char *name);
+const char *userGetName(int index);
 
-int scoreGet(int i);
-
-void socketSet(int s, int i);
-
-int socketGet(int i);
+int userGetScore(int index);
 
 #endif
 

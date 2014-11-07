@@ -67,27 +67,28 @@ static void loginHandleSocket(int socket) {
         }
 
         // Detect duplicate names
-        int id = userCount();
-        for (int i = 0; i < id; i++) {
-            if (strcmp(userGet(i), s) == 0) {
-                sendErrorMessage(socket, "Login error: Name already in use");
-                infoPrint("Login attempt with duplicate name: \"%s\"", s);
-                return;
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (userGetPresent(i)) {
+                if (strcmp(userGetName(i), s) == 0) {
+                    sendErrorMessage(socket, "Login error: Name already in use");
+                    infoPrint("Login attempt with duplicate name: \"%s\"", s);
+                    return;
+                }
             }
         }
 
         // Detect too many players
-        if (id >= MAX_PLAYERS) {
+        int pos = userFirstFreeSlot();
+        if (pos == -1) {
             sendErrorMessage(socket, "Login Error: Server is full");
             infoPrint("Login attempt while server is full: \"%s\"", s);
             return;
         }
 
         // Write new user data into "database"
-        userCountSet(id + 1);
-        userSet(s, id);
-        socketSet(socket, id);
-        scoreSet(0, id);
+        userSetPresent(pos, 1);
+        userSetName(pos, s);
+        userSetSocket(pos, socket);
         scoreMarkForUpdate();
 
         // Send LOK message
@@ -96,7 +97,7 @@ static void loginHandleSocket(int socket) {
         response.main.type[2] = 'K';
         response.main.length = htons(2);
         response.loginResponseOK.version = RFC_VERSION_NUMBER;
-        response.loginResponseOK.clientID = (uint8_t)id;
+        response.loginResponseOK.clientID = (uint8_t)pos;
         if (send(socket, &response, RFC_LOK_SIZE, 0) == -1) {
             errnoPrint("send");
             return;
