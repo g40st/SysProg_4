@@ -7,6 +7,7 @@
  * catalog.c: Implementierung der Fragekatalog-Behandlung und Loader-Steuerung
  */
 
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -17,6 +18,7 @@
 
 static int stdinPipe[2] = { -1, -1 };
 static int stdoutPipe[2] = { -1, -1 };
+static FILE *readPipe = NULL;
 static FILE *writePipe = NULL;
 
 int createPipes(void) {
@@ -27,6 +29,12 @@ int createPipes(void) {
 
     if (pipe(stdoutPipe) == -1) {
         errnoPrint("pipe out");
+        return 0;
+    }
+
+    readPipe = fdopen(stdoutPipe[0], "r");
+    if (readPipe == NULL) {
+        errnoPrint("fdopen");
         return 0;
     }
 
@@ -53,7 +61,12 @@ int forkLoader(void) {
             errnoPrint("dup2(stdoutPipe[1], STDOUT_FILENO)");
             return 0;
         }
-        execl("bin/loader", "loader", "catalog", "-d", NULL);
+
+        if (debugEnabled())
+            execl("bin/loader", "loader", "catalog", "-d", NULL);
+        else
+            execl("bin/loader", "loader", "catalog", NULL);
+
         errnoPrint("execl");
         return 0;
     }
@@ -65,5 +78,18 @@ void sendLoaderCommand(const char *cmd) {
         errnoPrint("fprintf");
     }
     fflush(writePipe);
+}
+
+void readLineLoader(char *buff, int size) {
+    if (readPipe == NULL) {
+        debugPrint("Invalid readLineLoader!");
+        return;
+    }
+
+    if (fgets(buff, size - 1, readPipe) == NULL)
+        errnoPrint("fgets");
+
+    if (buff[strlen(buff) - 1] == '\n')
+        buff[strlen(buff) - 1] = '\0';
 }
 

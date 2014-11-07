@@ -15,5 +15,7 @@ int forkLoader(void);
 
 void sendLoaderCommand(const char *cmd);
 
+void readLineLoader(char *buff, int size);
+
 #endif
 

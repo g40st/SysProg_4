@@ -24,8 +24,14 @@ void *clientThread(void *arg) {
 
     while (1) {
         if ((!present) && userGetPresent(0)) {
-            present = 1;
             sendLoaderCommand(BROWSE_CMD);
+            present = 1;
+        }
+
+        if (present) {
+            char buff[1024];
+            readLineLoader(buff, 1024);
+            debugPrint("Loader: %s", buff);
         }
 
         loopsleep();
