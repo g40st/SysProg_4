@@ -25,7 +25,7 @@
 #include "gui/gui_interface.h"
 #include "listener.h"
 
-void show_help() {
+static void show_help() {
     printf("Available options:\n");
     printf("    -n --name       speficy a username (argument)\n");
     printf("    -s --host       specify a host (argument)\n");
