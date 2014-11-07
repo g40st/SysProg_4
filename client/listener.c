@@ -94,6 +94,9 @@ void *listenerThread(void *arg) {
                     debugPrint("Received CatalogResponse %d (%d): %s", i++, len, buff);
                     preparation_addCatalog(buff);
                     vp += RFC_BASE_SIZE + len;
+                    if (vp >= (((void *)&response) + receive))
+                        break;
+
                     cat = (struct rfcCatalog *)vp;
                     len = ntohs(cat->main.length);
                 }
