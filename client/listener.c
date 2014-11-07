@@ -83,14 +83,15 @@ void *listenerThread(void *arg) {
                 preparation_selectCatalog(buff);
             } else if (equalLiteral(response.main, "CRE")) {
                 // Display specified catalogs
-                debugPrint("Received CatalogResponse");
                 int len = ntohs(response.main.length);
                 void *vp = &response.catalogResponse;
                 struct rfcCatalog *cat = (struct rfcCatalog *)vp;
+                int i = 0;
                 while (len != 0) {
                     char buff[len + 1];
                     strncpy(buff, cat->filename, len);
                     buff[len] = '\0';
+                    debugPrint("Received CatalogResponse %d (%d): %s", i++, len, buff);
                     preparation_addCatalog(buff);
                     vp += RFC_BASE_SIZE + len;
                     cat = (struct rfcCatalog *)vp;
