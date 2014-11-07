@@ -14,8 +14,11 @@ int createPipes(void);
 int forkLoader(void);
 
 void sendLoaderCommand(const char *cmd);
-
 void readLineLoader(char *buff, int size);
+
+int loaderOpenSharedMemory(int size);
+void loaderCloseSharedMemory(void);
+void *getSharedMemory();
 
 #endif
 

@@ -11,6 +11,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "common/server_loader_protocol.h"
 #include "common/util.h"
@@ -91,5 +95,41 @@ void readLineLoader(char *buff, int size) {
 
     if (buff[strlen(buff) - 1] == '\n')
         buff[strlen(buff) - 1] = '\0';
+}
+
+static int shm_size = 0;
+static int shm_fd = -1;
+static void *shm_data = NULL;
+
+int loaderOpenSharedMemory(int size) {
+    shm_size = size;
+    shm_fd = shm_open(SHMEM_NAME, O_RDONLY, (mode_t)0);
+    if (shm_fd == -1) {
+        errnoPrint("shm_open");
+        return 0;
+    }
+
+    shm_data = mmap(NULL, size, PROT_READ, MAP_SHARED, shm_fd, 0);
+    if (shm_data == MAP_FAILED) {
+        errnoPrint("mmap");
+        return 0;
+    }
+
+    return 1;
+}
+
+void loaderCloseSharedMemory(void) {
+    if (munmap(shm_data, shm_size) == -1) {
+        errnoPrint("munmap");
+        return;
+    }
+    close(shm_fd);
+    shm_size = 0;
+    shm_fd = -1;
+    shm_data = NULL;
+}
+
+void *getSharedMemory() {
+    return shm_data;
 }
 
