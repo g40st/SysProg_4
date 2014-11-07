@@ -96,7 +96,6 @@ void *listenerThread(void *arg) {
                     vp += RFC_BASE_SIZE + len;
                     if (vp >= (((void *)&response) + receive))
                         break;
-
                     cat = (struct rfcCatalog *)vp;
                     len = ntohs(cat->main.length);
                 }

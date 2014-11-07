@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "main.h"
+#include "catalog.h"
 #include "user.h"
 #include "common/server_loader_protocol.h"
 #include "common/util.h"

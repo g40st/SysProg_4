@@ -7,12 +7,12 @@
  * main.c: Hauptprogramm des Servers
  */
 
+#include "catalog.h"
 #include "login.h"
 #include "score.h"
 #include "user.h"
 #include "clientthread.h"
 #include "common/util.h"
-#include "main.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,16 +29,6 @@
 #include <signal.h>
 
 static int running = 1;
-static int stdinPipe[2];
-static int stdoutPipe[2];
-
-int getWritePipe() {
-    return stdinPipe[1];
-}
-
-int getReadPipe() {
-    return stdoutPipe[0];
-}
 
 static void intHandler(int dummy) {
     running = 0;
@@ -145,40 +135,13 @@ int main(int argc, char **argv) {
 
     infoPrint("Serverport: %i", ntohs(server.sin_port));
 
-    // Pipes and Forking
-    pid_t forkResult;
-
     debugPrint("Creating Pipes...");
-    if (pipe(stdinPipe) == -1) {
-        errnoPrint("pipe in");
+    if (!createPipes())
         return 1;
-    }
-
-    if (pipe(stdoutPipe) == -1) {
-        errnoPrint("pipe out");
-        return 1;
-    }
 
     debugPrint("Forking to run loader...");
-    forkResult = fork();
-    if (forkResult < 0) {
-        errnoPrint("fork");
+    if (!forkLoader())
         return 1;
-    } else if (forkResult == 0) {
-        if (dup2(stdinPipe[0], STDIN_FILENO) == -1) {
-            errnoPrint("dup2(stdinPipe[0], STDIN_FILENO)");
-            return 1;
-        }
-
-        if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1) {
-            errnoPrint("dup2(stdoutPipe[1], STDOUT_FILENO)");
-            return 1;
-        }
-
-        execl("bin/loader", "loader", "catalog", "-d", NULL);
-        errnoPrint("execl");
-        return 1;
-    }
 
     debugPrint("Starting Threads...");
     pthread_t threads[3];
