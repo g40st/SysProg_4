@@ -15,6 +15,9 @@ void userInit(void);
 int userCount(void);
 int userFirstFreeSlot(void);
 
+void userSetMainSocket(int s);
+int userGetMainSocket(void);
+
 void userSetPresent(int index, int present);
 int userGetPresent(int index);
 

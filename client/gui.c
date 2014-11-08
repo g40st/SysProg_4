@@ -68,6 +68,11 @@ void preparation_onStartClicked(const char *currentSelection) {
     }
 
     if (getGamePhase() == PHASE_PREPARATION) {
+        if ((currentSelection == NULL) || (currentSelection[0] == '\0')) {
+            debugPrint("Clicked start without selected category!");
+            guiShowErrorDialog("Can't start game without selected category!", 0);
+            return;
+        }
         debugPrint("preparation_onStartClicked: %s", currentSelection);
         rfc response;
         response.main.type[0] = 'S';

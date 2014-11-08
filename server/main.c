@@ -164,7 +164,10 @@ int main(int argc, char **argv) {
         errnoPrint("socket");
         return 1;
     }
+
     signal(SIGINT, intHandler);
+    userSetMainSocket(listen_socket);
+
     if (bind(listen_socket, (struct sockaddr*) &server, sizeof(struct sockaddr_in)) == -1) {
         errnoPrint("bind");
         close(listen_socket);

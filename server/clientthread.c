@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <netinet/in.h>
+#include <sys/mman.h>
 
 #include "catalog.h"
 #include "score.h"
@@ -107,7 +108,10 @@ void *clientThread(void *arg) {
             pthread_mutex_lock(&mutexCategories);
             if ((selectedCategory < 0) || (selectedCategory >= numCategories)) {
                 errorPrint("Error: Trying to load while no category is selected!");
+                gamePhase = PHASE_PREPARATION;
+                sendWarningMessage(userGetSocket(0), "Please select a category!");
             } else {
+                shm_unlink(SHMEM_NAME);
                 loaded = 1;
                 char buff[BUFFER_SIZE];
                 snprintf(buff, BUFFER_SIZE, "%s%s", LOAD_CMD_PREFIX, categories[selectedCategory]);

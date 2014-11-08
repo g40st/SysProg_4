@@ -120,14 +120,22 @@ int loaderOpenSharedMemory(int size) {
 }
 
 void loaderCloseSharedMemory(void) {
-    if (munmap(shm_data, shm_size) == -1) {
-        errnoPrint("munmap");
-        return;
+    if (shm_data != NULL) {
+        if (munmap(shm_data, shm_size) == -1) {
+            errnoPrint("munmap");
+        }
+        shm_data = NULL;
+        shm_size = 0;
+
+        if (shm_unlink(SHMEM_NAME) == -1) {
+            errnoPrint("shm_unlink");
+        }
     }
-    close(shm_fd);
-    shm_size = 0;
-    shm_fd = -1;
-    shm_data = NULL;
+
+    if (shm_fd != -1) {
+        close(shm_fd);
+        shm_fd = -1;
+    }
 }
 
 void *getSharedMemory(void) {

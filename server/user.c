@@ -11,9 +11,11 @@
 #include <string.h>
 #include <pthread.h>
 #include <sys/select.h>
-
+#include <errno.h>
+#include <signal.h>
 
 #include "common/util.h"
+#include "clientthread.h"
 #include "user.h"
 
 typedef struct {
@@ -24,6 +26,7 @@ typedef struct {
 } user_t;
 
 static user_t users[MAX_PLAYERS];
+static int mainSocket = -1;
 static pthread_mutex_t mutexUsers = PTHREAD_MUTEX_INITIALIZER;
 
 void userInit(void) {
@@ -35,6 +38,7 @@ void userInit(void) {
         users[i].score = 0;
         users[i].socket = -1;
     }
+    mainSocket = -1;
     pthread_mutex_unlock(&mutexUsers);
 }
 
@@ -58,6 +62,19 @@ int userFirstFreeSlot(void) {
             break;
         }
     }
+    pthread_mutex_unlock(&mutexUsers);
+    return s;
+}
+
+void userSetMainSocket(int s) {
+    pthread_mutex_lock(&mutexUsers);
+    mainSocket = s;
+    pthread_mutex_unlock(&mutexUsers);
+}
+
+int userGetMainSocket(void) {
+    pthread_mutex_lock(&mutexUsers);
+    int s = mainSocket;
     pthread_mutex_unlock(&mutexUsers);
     return s;
 }
@@ -145,6 +162,10 @@ int waitForSockets(int timeout) {
     ts.tv_sec = 0;
     ts.tv_nsec = timeout * 1000000;
 
+    sigset_t blockset;
+    sigfillset(&blockset);
+    sigdelset(&blockset, SIGINT);
+
     fd_set fds;
     FD_ZERO(&fds);
     int max = -1;
@@ -163,10 +184,17 @@ int waitForSockets(int timeout) {
         return -1;
     }
 
-    int retval = pselect(max + 1, &fds, NULL, NULL, &ts, NULL);
+    int retval = pselect(max + 1, &fds, NULL, NULL, &ts, &blockset);
     if (retval == -1) {
-        errnoPrint("select");
-        return -2;
+        if (errno == EINTR) {
+            // SIGINT was caught
+            close(userGetMainSocket());
+            cleanCategories();
+            return 0;
+        } else {
+            errnoPrint("select");
+            return -2;
+        }
     } else if (retval == 0) {
         return -1;
     } else {
