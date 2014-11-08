@@ -150,7 +150,7 @@ void *clientThread(void *arg) {
                 debugPrint("Remote host closed connection");
                 userSetPresent(result, 0);
                 scoreMarkForUpdate();
-            } else {
+            } else if (gamePhase == PHASE_PREPARATION) {
                 if (equalLiteral(response.main, "CRQ")) {
                     debugPrint("Got CatalogRequest from ID %d", result);
                     response.main.type[0] = 'C';
@@ -169,11 +169,28 @@ void *clientThread(void *arg) {
                         }
                     }
                     pthread_mutex_unlock(&mutexCategories);
-                //} else if (equalLiteral(response.main, "")) {
+                } else if (equalLiteral(response.main, "CCH")) {
+                    debugPrint("Got CatalogChanged from ID %d", result);
+                    for (int i = 0; i < MAX_PLAYERS; i++) {
+                        if ((i != result) && userGetPresent(i)) {
+                            if (send(userGetSocket(i), &response,
+                                        RFC_BASE_SIZE + ntohs(response.main.length), 0) == -1) {
+                                errnoPrint("send");
+                            }
+                        }
+                    }
+                } else if (equalLiteral(response.main, "STG")) {
+                    debugPrint("Got StartGame from ID %d", result);
                 } else {
                     errorPrint("Unexpected message: %c%c%c", response.main.type[0],
                             response.main.type[1], response.main.type[2]);
                 }
+            } else if (gamePhase == PHASE_GAME) {
+                errorPrint("Unexpected message: %c%c%c", response.main.type[0],
+                        response.main.type[1], response.main.type[2]);
+            } else {
+                errorPrint("Unexpected message: %c%c%c", response.main.type[0],
+                        response.main.type[1], response.main.type[2]);
             }
         }
 
