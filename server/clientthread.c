@@ -171,6 +171,16 @@ void *clientThread(void *arg) {
                     pthread_mutex_unlock(&mutexCategories);
                 } else if (equalLiteral(response.main, "CCH")) {
                     debugPrint("Got CatalogChanged from ID %d", result);
+                    pthread_mutex_lock(&mutexCategories);
+                    char buff[ntohs(response.main.length) + 1];
+                    buff[ntohs(response.main.length)] = '\0';
+                    memcpy(buff, response.catalogChange.filename, ntohs(response.main.length));
+                    for (int i = 0; i < numCategories; i++) {
+                        if (strcmp(categories[i], buff) == 0) {
+                            selectedCategory = i;
+                        }
+                    }
+                    pthread_mutex_unlock(&mutexCategories);
                     for (int i = 0; i < MAX_PLAYERS; i++) {
                         if ((i != result) && userGetPresent(i)) {
                             if (send(userGetSocket(i), &response,
@@ -180,7 +190,20 @@ void *clientThread(void *arg) {
                         }
                     }
                 } else if (equalLiteral(response.main, "STG")) {
-                    debugPrint("Got StartGame from ID %d", result);
+                    if (result != 0) {
+                        infoPrint("Received StartGame from unprivileged ID %d", result);
+                    } else {
+                        debugPrint("Got StartGame game master");
+                        gamePhase = PHASE_GAME;
+                        for (int i = 0; i < MAX_PLAYERS; i++) {
+                            if ((i != result) && userGetPresent(i)) {
+                                if (send(userGetSocket(i), &response,
+                                            RFC_BASE_SIZE + ntohs(response.main.length), 0) == -1) {
+                                    errnoPrint("send");
+                                }
+                            }
+                        }
+                    }
                 } else {
                     errorPrint("Unexpected message: %c%c%c", response.main.type[0],
                             response.main.type[1], response.main.type[2]);
