@@ -45,7 +45,7 @@ CLEANFILES = server/*.o server/*.dep \
 	     client/*.o client/*.dep \
 	     loader/*.o loader/*.dep \
 	     common/*.o common/*.dep \
-		 client/gui2/*.o client/gui2/*.dep
+		 client/gui/*.o client/gui/*.dep
 MRPROPERFILES = $(OUTPUT_TARGETS)
 
 ###############################################################################
@@ -77,10 +77,10 @@ LOADER_MODULES=loader/browse.o \
 	       loader/util.o \
 	       common/util.o
 
-GUI_MODULES=client/gui2/guiApp.o \
-			client/gui2/guiGame.o \
-			client/gui2/guiMain.o \
-			client/gui2/guiPreparation.o
+GUI_MODULES=client/gui/guiApp.o \
+			client/gui/guiGame.o \
+			client/gui/guiMain.o \
+			client/gui/guiPreparation.o
 
 ifeq ($(ARCH2),Darwin)
 CLIENT_MODULES += $(GUI_MODULES)
