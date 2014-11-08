@@ -7,6 +7,7 @@
  * gui.c: Implementierung des GUI-Threads
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -20,6 +21,33 @@
 #include "gui.h"
 
 static int guiSocket = -1;
+
+int handleErrorWarningMessage(rfc response) {
+    if (equalLiteral(response.main, "ERR")) {
+        int length = ntohs(response.main.length) - RFC_ERR_SIZE;
+        if (length >= MAX_STRING_LENGTH)
+            length = MAX_STRING_LENGTH;
+
+        char s[length + 1];
+        s[length] = '\0';
+        memcpy(s, response.errorWarning.message, length);
+
+        if (response.errorWarning.subtype == 0) {
+            infoPrint("Warning: %s", s);
+            guiShowMessageDialog(s, 0);
+            return 1;
+        } else if (response.errorWarning.subtype == 1) {
+            errorPrint("Error: %s", s);
+            guiShowErrorDialog(s, 1);
+            exit(1);
+            return 1; // Should already have happened, just in case
+        } else {
+            debugPrint("Got ERR with invalid type (%d): %s", response.errorWarning.subtype, s);
+        }
+    }
+
+    return 0;
+}
 
 void *guiThread(void *arg) {
     guiSocket = *((int *)arg);

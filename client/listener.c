@@ -7,6 +7,7 @@
  * listener.c: Implementierung des Listener-Threads
  */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
@@ -17,6 +18,7 @@
 #include "common/rfc.h"
 #include "common/util.h"
 #include "gui/gui_interface.h"
+#include "gui.h"
 #include "listener.h"
 
 static int running = 1;
@@ -63,6 +65,10 @@ void *listenerThread(void *arg) {
             errorPrint("Remote host closed connection");
             return NULL;
         }
+
+        // Warning/Error messages are always handled here
+        if (handleErrorWarningMessage(response))
+            continue;
 
         // Check message and react accordingly
         if (getGamePhase() == PHASE_PREPARATION) {

@@ -10,6 +10,11 @@
 #ifndef GUI_H
 #define GUI_H
 
+#include "common/rfc.h"
+
+// Returns 1 on success, 0 on error
+int handleErrorWarningMessage(rfc response);
+
 void *guiThread(void *arg);
 
 #endif

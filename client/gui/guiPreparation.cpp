@@ -48,10 +48,13 @@ PreparationFrame::PreparationFrame(const wxString& title, const wxPoint& pos, co
     wxBoxSizer* sizer = new wxBoxSizer(wxHORIZONTAL);
     sizer->Add(boxLeft, 1, wxEXPAND | wxALL, 10);
     sizer->Add(boxRight, 1, wxEXPAND | wxALL, 10);
-    panel->SetSizer(sizer);
 
+    wxBoxSizer* outer = new wxBoxSizer(wxVERTICAL);
     start = new wxButton(panel, BUTTON_Start, "Start!");
     start->Enable(false);
+    outer->Add(sizer, 1, wxEXPAND | wxALL, 10);
+    outer->Add(start, 0, wxEXPAND | wxALL, 10);
+    panel->SetSizer(outer);
 
     CreateStatusBar();
     SetStatusText("wxWidgets GUI by xythobuz is ready...");

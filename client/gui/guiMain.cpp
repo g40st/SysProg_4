@@ -30,11 +30,19 @@ void guiDestroy(void) {
 }
 
 void guiShowErrorDialog(const char *message, int quitOnClose) {
+    wxMessageDialog dialog(NULL, wxString(message), wxString("Error"));
+    dialog.ShowModal();
 
+    if (quitOnClose)
+        wxExit();
 }
 
 void guiShowMessageDialog(const char *message, int quitOnClose) {
+    wxMessageDialog dialog(NULL, wxString(message));
+    dialog.ShowModal();
 
+    if (quitOnClose)
+        wxExit();
 }
 
 }

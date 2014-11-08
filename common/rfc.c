@@ -26,26 +26,6 @@ int equalLiteral(struct rfcMain m, const char *s) {
     return 0;
 }
 
-int handleErrorWarningMessage(rfc response) {
-    if (equalLiteral(response.main, "ERR")) {
-        int length = ntohs(response.main.length) - RFC_ERR_SIZE;
-        char s[length + 1];
-        s[length] = '\0';
-        memcpy(s, &response.errorWarning.message, length);
-        if (response.errorWarning.subtype == 0) {
-            infoPrint("Warning: %s", s);
-            return 1;
-        } else if (response.errorWarning.subtype == 1) {
-            errorPrint("Error: %s", s);
-            exit(1);
-            return 1;
-        } else {
-            debugPrint("Unknown message type %d for: %s\n", response.errorWarning.subtype, s);
-        }
-    }
-    return 0;
-}
-
 static int sendErrorWarningMessage(int socket, const char *message, uint8_t subtype) {
     size_t length = strlen(message);
     if (length > MAX_STRING_LENGTH)
