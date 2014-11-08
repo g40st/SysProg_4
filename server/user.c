@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/select.h>
+
 
 #include "common/util.h"
 #include "user.h"

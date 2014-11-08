@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <netinet/in.h>
 
 #include "catalog.h"
 #include "score.h"
