@@ -26,5 +26,8 @@ const char *userGetName(int index);
 
 int userGetScore(int index);
 
+// Returns -1 on timeout, -2 on error, else ID
+int waitForSockets(int timeout);
+
 #endif
 

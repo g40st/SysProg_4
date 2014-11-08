@@ -13,6 +13,7 @@
 void addCategory(const char *c);
 int countCategory(void);
 const char *getCategory(int index);
+void selectCategory(int index);
 void cleanCategories(void);
 
 void *clientThread(void *arg);

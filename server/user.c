@@ -7,6 +7,7 @@
  * user.c: Implementierung der User-Verwaltung
  */
 
+#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
 
@@ -135,5 +136,52 @@ int userGetScore(int index) {
     }
     pthread_mutex_unlock(&mutexUsers);
     return score;
+}
+
+int waitForSockets(int timeout) {
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = timeout * 1000000;
+
+    fd_set fds;
+    FD_ZERO(&fds);
+    int max = -1;
+    pthread_mutex_lock(&mutexUsers);
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (users[i].present) {
+            if (users[i].socket > max)
+                max = users[i].socket;
+
+            FD_SET(users[i].socket, &fds);
+        }
+    }
+    pthread_mutex_unlock(&mutexUsers);
+
+    if (max == -1) {
+        return -1;
+    }
+
+    int retval = pselect(max + 1, &fds, NULL, NULL, &ts, NULL);
+    if (retval == -1) {
+        errnoPrint("select");
+        return -2;
+    } else if (retval == 0) {
+        return -1;
+    } else {
+        pthread_mutex_lock(&mutexUsers);
+        int ret = -2;
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (users[i].present) {
+                if (FD_ISSET(users[i].socket, &fds)) {
+                    ret = i;
+                }
+            }
+        }
+        pthread_mutex_unlock(&mutexUsers);
+        if (ret < 0) {
+            errorPrint("Could not find active socket?!");
+        }
+        return ret;
+    }
 }
 

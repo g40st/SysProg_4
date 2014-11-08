@@ -440,7 +440,7 @@ char *readLine(int fd		/**< Der Dateideskriptor, von dem gelesen werden soll */
 void loopsleep(void) {
     struct timespec t;
     t.tv_sec = 0;
-    t.tv_nsec = 25 * 1000000;
+    t.tv_nsec = THREAD_TIMEOUT * 1000000;
     nanosleep(&t, NULL);
 }
 

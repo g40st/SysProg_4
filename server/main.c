@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
     fd_set fds;
     struct timespec ts;
     ts.tv_sec = 0;
-    ts.tv_nsec = 250000000; // 250ms
+    ts.tv_nsec = SOCKET_TIMEOUT * 1000000;
     sigset_t blockset;
     sigfillset(&blockset);
     sigdelset(&blockset, SIGINT);

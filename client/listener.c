@@ -87,6 +87,8 @@ void *listenerThread(void *arg) {
                 void *vp = &response.catalogResponse;
                 struct rfcCatalog *cat = (struct rfcCatalog *)vp;
                 int i = 0;
+                if (len == 0)
+                    debugPrint("Received completely empty CatalogResponse");
                 while (len != 0) {
                     char buff[len + 1];
                     strncpy(buff, cat->filename, len);

@@ -12,9 +12,15 @@
 #include <stddef.h>
 
 #define PORT 8111
+
 #define MAX_PLAYERS 4
-#define MAX_CHAR 1024
 #define MAX_QUERYS MAX_PLAYERS
+
+#define MAX_CHAR 1024
+#define BUFFER_SIZE MAX_CHAR
+
+#define THREAD_TIMEOUT 25
+#define SOCKET_TIMEOUT THREAD_TIMEOUT
 
 /* Wir benutzen die __attribute__ Erweiterung von GCC zur Überprüfung
  * der Argumente von debugPrint. Damit andere Compiler sich nicht beschweren,
