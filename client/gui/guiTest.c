@@ -36,25 +36,12 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void preparation_onCatalogChanged(const char *newSelection) {
-    debugPrint("<-- preparation_onCatalogChanged(%s)", newSelection);
-}
-
-void preparation_onStartClicked(const char *currentSelection) {
-    debugPrint("<-- preparation_onStartClicked(%s)", currentSelection);
-
-    debugPrint("--> preparation_hideWindow()");
-    preparation_hideWindow();
-
+void createGameFrame(void) {
     debugPrint("--> game_showWindow()");
     game_showWindow();
-}
 
-void preparation_onWindowClosed(void) {
-    debugPrint("<-- preparation_onWindowClosed()");
-
-    debugPrint("--> game_showWindow()");
-    game_showWindow();
+    debugPrint("--> game_reset()");
+    game_reset();
 
     debugPrint("--> game_setControlsEnabled(1)");
     game_setControlsEnabled(1);
@@ -113,6 +100,25 @@ void preparation_onWindowClosed(void) {
     game_setPlayerScore(2, 4);
 }
 
+void preparation_onCatalogChanged(const char *newSelection) {
+    debugPrint("<-- preparation_onCatalogChanged(%s)", newSelection);
+}
+
+void preparation_onStartClicked(const char *currentSelection) {
+    debugPrint("<-- preparation_onStartClicked(%s)", currentSelection);
+
+    debugPrint("--> preparation_hideWindow()");
+    preparation_hideWindow();
+
+    createGameFrame();
+}
+
+void preparation_onWindowClosed(void) {
+    debugPrint("<-- preparation_onWindowClosed()");
+
+    createGameFrame();
+}
+
 void game_onSubmitClicked(unsigned char selectedAnswers) {
     debugPrint("<-- game_onSubmitClicked(%d)", selectedAnswers);
 
@@ -121,6 +127,9 @@ void game_onSubmitClicked(unsigned char selectedAnswers) {
 
     debugPrint("--> guiShowMessageDialog(\"Message Dialog\", 0)");
     guiShowMessageDialog("Message Dialog", 0);
+
+    debugPrint("--> game_reset()");
+    game_reset();
 
     debugPrint("--> guiShowErrorDialog(\"Error Dialog\", 0)");
     guiShowErrorDialog("Error Dialog", 0);

@@ -4,8 +4,16 @@
  * Copyright 2014 Thomas Buck <xythobuz@xythobuz.de
  */
 
+#include <sstream>
+
 #include "guiApp.h"
 #include "guiGame.h"
+
+#define QUESTION_FACTOR 4
+#define SCORE_FACTOR 2
+#define WINDOW_DIVISOR 6
+
+#define IMAGE_SIZE 30
 
 ScrolledTextPane::ScrolledTextPane(wxWindow* parent, wxWindowID id) : wxScrolledWindow(parent, id) {
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -16,8 +24,6 @@ ScrolledTextPane::ScrolledTextPane(wxWindow* parent, wxWindowID id) : wxScrolled
     SetScrollRate(5, 5);
 }
 
-static wxColour defaultColour;
-
 extern "C" {
 #include "gui_interface.h"
 }
@@ -27,19 +33,33 @@ wxBEGIN_EVENT_TABLE(GameFrame, wxFrame)
     EVT_BUTTON(BUTTON_Send, GameFrame::buttonPress)
 wxEND_EVENT_TABLE()
 
+void GameFrame::createImages() {
+    imageNone = new wxImage(IMAGE_SIZE, IMAGE_SIZE, false);
+    imageNone->SetRGB(wxRect(0, 0, IMAGE_SIZE, IMAGE_SIZE), wxLIGHT_GREY->Red(), wxLIGHT_GREY->Green(), wxLIGHT_GREY->Blue());
+
+    imageOk = new wxImage(IMAGE_SIZE, IMAGE_SIZE, false);
+    imageOk->SetRGB(wxRect(0, 0, IMAGE_SIZE, IMAGE_SIZE), wxGREEN->Red(), wxGREEN->Green(), wxGREEN->Blue());
+
+    imageError = new wxImage(IMAGE_SIZE, IMAGE_SIZE, false);
+    imageError->SetRGB(wxRect(0, 0, IMAGE_SIZE, IMAGE_SIZE), wxRED->Red(), wxRED->Green(), wxRED->Blue());
+
+    imageTimeout = new wxImage(IMAGE_SIZE, IMAGE_SIZE, false);
+    imageTimeout->SetRGB(wxRect(0, 0, IMAGE_SIZE, IMAGE_SIZE), wxYELLOW->Red(), wxYELLOW->Green(), wxYELLOW->Blue());
+}
+
 GameFrame::GameFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
-        : wxFrame(NULL, wxID_ANY, title, pos, size) {
+        : wxFrame(NULL, wxID_ANY, title, pos, size), maxScore(0) {
+
+    createImages();
 
     questionBox = new wxStaticBox(this, wxID_ANY, "", wxDefaultPosition,
-            wxSize(size.GetWidth() * 3 / 4 - 20, size.GetHeight() - 20));
+            wxSize(size.GetWidth() * QUESTION_FACTOR / WINDOW_DIVISOR - 20, size.GetHeight() - 20));
     wxStaticBox* scoreBox = new wxStaticBox(this, wxID_ANY, "", wxDefaultPosition,
-            wxSize(size.GetWidth() / 4 - 20, size.GetHeight() - 20));
-
-    defaultColour = questionBox->GetBackgroundColour();
+            wxSize(size.GetWidth() * SCORE_FACTOR / WINDOW_DIVISOR - 20, size.GetHeight() - 20));
 
     wxBoxSizer* panelSizer = new wxBoxSizer(wxHORIZONTAL);
-    panelSizer->Add(questionBox, 1, wxEXPAND | wxALL, 10);
-    panelSizer->Add(scoreBox, 0, wxEXPAND | wxALL, 10);
+    panelSizer->Add(questionBox, 1, wxEXPAND | wxALL, 5);
+    panelSizer->Add(scoreBox, 0, wxEXPAND | wxALL, 5);
 
     wxBoxSizer* questionSizer = new wxBoxSizer(wxVERTICAL);
 
@@ -47,34 +67,67 @@ GameFrame::GameFrame(const wxString& title, const wxPoint& pos, const wxSize& si
     questionSizer->Add(questionText, 0, wxEXPAND | wxALL, 5);
 
     question = new ScrolledTextPane(questionBox, wxID_ANY);
-    questionSizer->Add(question, 1, wxEXPAND | wxALL | wxALIGN_CENTER, 10);
+    questionSizer->Add(question, 1, wxEXPAND | wxALL | wxALIGN_CENTER, 5);
 
     for (int i = 0; i < MAX_ANSWERS; i++) {
-        answers[i].panel = new wxPanel(questionBox);
-        answers[i].check = new wxCheckBox(answers[i].panel, wxID_ANY, "");
+        wxPanel* answerPanel = new wxPanel(questionBox);
+        answers[i].check = new wxCheckBox(answerPanel, wxID_ANY, "");
+        answers[i].image = new wxStaticBitmap(answerPanel, wxID_ANY,
+                wxBitmap(*imageNone), wxDefaultPosition, wxSize(IMAGE_SIZE, IMAGE_SIZE));
 
         wxBoxSizer* sizer = new wxBoxSizer(wxHORIZONTAL);
-        sizer->Add(answers[i].check, 1, wxEXPAND | wxALL, 10);
-        answers[i].panel->SetSizer(sizer);
+        sizer->Add(answers[i].image, 0, wxEXPAND | wxALL | wxALIGN_CENTER, 5);
+        sizer->Add(answers[i].check, 1, wxEXPAND | wxALL, 5);
+        answerPanel->SetSizer(sizer);
 
-        questionSizer->Add(answers[i].panel, 1, wxEXPAND | wxALL, 10);
+        questionSizer->Add(answerPanel, 1, wxEXPAND | wxALL, 5);
 
-        answers[i].panel->SetBackgroundColour(defaultColour);
+        answers[i].check->SetBackgroundColour(*wxLIGHT_GREY);
         answers[i].check->Enable(false);
     }
 
     send = new wxButton(questionBox, BUTTON_Send, "Send");
     send->Enable(false);
-    questionSizer->Add(send, 0, wxEXPAND | wxALL, 10);
+    questionSizer->Add(send, 0, wxEXPAND | wxALL, 5);
+
+    wxStaticBox* statusPanel = new wxStaticBox(questionBox, wxID_ANY, "");
+    wxBoxSizer* statusSizer = new wxBoxSizer(wxHORIZONTAL);
+    statusIcon = new wxStaticBitmap(statusPanel, wxID_ANY,
+            wxBitmap(*imageNone), wxDefaultPosition, wxSize(IMAGE_SIZE, IMAGE_SIZE));
+    statusSizer->Add(statusIcon, 0, wxEXPAND | wxALL, 5);
+    statusText = new wxStaticText(statusPanel, wxID_ANY, "wxWidgets GUI by xythobuz is ready...");
+    statusSizer->Add(statusText, 1, wxEXPAND | wxALL, 5);
+    statusPanel->SetSizer(statusSizer);
+    questionSizer->Add(statusPanel, 1, wxEXPAND | wxALL, 5);
 
     questionBox->SetSizer(questionSizer);
 
     wxBoxSizer* scoreSizer = new wxBoxSizer(wxVERTICAL);
     wxStaticText* scoreText = new wxStaticText(scoreBox, wxID_ANY, "Scores");
-    scoreSizer->Add(scoreText, 1, wxEXPAND | wxALL, 5);
+    scoreSizer->Add(scoreText, 0, wxEXPAND | wxALL, 5);
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
+        wxStaticBox* playerBox = new wxStaticBox(scoreBox, wxID_ANY, "");
+        wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
 
+        wxPanel* textPanel = new wxPanel(playerBox);
+        wxBoxSizer* textSizer = new wxBoxSizer(wxHORIZONTAL);
+
+        players[i].text = new wxStaticText(playerBox, wxID_ANY, "");
+        textSizer->Add(players[i].text, 1, wxEXPAND | wxALL, 5);
+
+        players[i].score = new wxStaticText(playerBox, wxID_ANY, "",
+                wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+        textSizer->Add(players[i].score, 1, wxEXPAND | wxALL | wxALIGN_RIGHT, 5);
+
+        textPanel->SetSizer(textSizer);
+        sizer->Add(textPanel, 1, wxEXPAND | wxALL, 5);
+
+        players[i].bar = new wxGauge(playerBox, wxID_ANY, maxScore);
+        sizer->Add(players[i].bar, 1, wxEXPAND | wxALL, 5);
+
+        playerBox->SetSizer(sizer);
+        scoreSizer->Add(playerBox, 1, wxEXPAND | wxALL, 5);
     }
 
     scoreBox->SetSizer(scoreSizer);
@@ -103,12 +156,20 @@ void game_showWindow(void) {
 
 void game_setStatusText(const char *text) {
     wxGetApp().createGame();
-    // TODO
+    wxGetApp().game->statusText->SetLabel(wxString(text));
 }
 
 void game_setStatusIcon(StatusIcon icon) {
     wxGetApp().createGame();
-    // TODO
+    if (icon == STATUS_ICON_CORRECT) {
+        wxGetApp().game->statusIcon->SetBitmap(wxBitmap(*wxGetApp().game->imageOk));
+    } else if (icon == STATUS_ICON_WRONG) {
+        wxGetApp().game->statusIcon->SetBitmap(wxBitmap(*wxGetApp().game->imageError));
+    } else if (icon == STATUS_ICON_TIMEOUT) {
+        wxGetApp().game->statusIcon->SetBitmap(wxBitmap(*wxGetApp().game->imageTimeout));
+    } else {
+        wxGetApp().game->statusIcon->SetBitmap(wxBitmap(*wxGetApp().game->imageNone));
+    }
 }
 
 void game_setQuestion(const char *text) {
@@ -123,43 +184,43 @@ void game_setAnswer(int index, const char *text) {
     if ((index >= 0) && (index < MAX_ANSWERS)) {
         wxGetApp().game->answers[index].check->SetLabel(wxString(text));
     } else {
-        debugPrint("Invalid game_setAnswer: %d, %s", index, text);
+        errorPrint("gui2: Invalid game_setAnswer: %d, %s", index, text);
     }
 }
 
 void game_markAnswerCorrect(int index) {
     wxGetApp().createGame();
     if ((index >= 0) && (index < MAX_ANSWERS)) {
-        // TODO
+        wxGetApp().game->answers[index].image->SetBitmap(wxBitmap(*wxGetApp().game->imageOk));
     } else {
-        debugPrint("Invalid game_markAnswerCorrect: %d", index);
+        errorPrint("gui2: Invalid game_markAnswerCorrect: %d", index);
     }
 }
 
 void game_markAnswerWrong(int index) {
     wxGetApp().createGame();
     if ((index >= 0) && (index < MAX_ANSWERS)) {
-        // TODO
+        wxGetApp().game->answers[index].image->SetBitmap(wxBitmap(*wxGetApp().game->imageError));
     } else {
-        debugPrint("Invalid game_markAnswerWrong: %d", index);
+        errorPrint("gui2: Invalid game_markAnswerWrong: %d", index);
     }
 }
 
 void game_highlightMistake(int index) {
     wxGetApp().createGame();
     if ((index >= 0) && (index < MAX_ANSWERS)) {
-        wxGetApp().game->answers[index].panel->SetBackgroundColour(*wxRED);
+        wxGetApp().game->answers[index].check->SetBackgroundColour(*wxRED);
     } else {
-        debugPrint("Invalid game_highlightMistake: %d", index);
+        errorPrint("gui2: Invalid game_highlightMistake: %d", index);
     }
 }
 
 void game_clearAnswerMarksAndHighlights(void) {
     wxGetApp().createGame();
     for (int i = 0; i < MAX_ANSWERS; i++) {
-        wxGetApp().game->answers[i].panel->SetBackgroundColour(defaultColour);
+        wxGetApp().game->answers[i].check->SetBackgroundColour(*wxLIGHT_GREY);
         wxGetApp().game->answers[i].check->SetValue(false);
-        // TODO Undo markAnswerCorrect/Wrong
+        wxGetApp().game->answers[i].image->SetBitmap(wxBitmap(*wxGetApp().game->imageNone));
     }
 }
 
@@ -174,27 +235,39 @@ void game_setControlsEnabled(int enable) {
 void game_setPlayerName(int position, const char *name) {
     wxGetApp().createGame();
     if ((position >= 0) && (position < MAX_PLAYERS)) {
-        // TODO
+        wxGetApp().game->players[position].text->SetLabel(wxString(name));
+        wxGetApp().game->Layout();
     } else {
-        debugPrint("Invalid game_setPlayerName: %d, %s", position, name);
+        errorPrint("gui2: Invalid game_setPlayerName: %d, %s", position, name);
     }
 }
 
 void game_setPlayerScore(int position, unsigned long score) {
     wxGetApp().createGame();
     if ((position >= 0) && (position < MAX_PLAYERS)) {
-        // TODO
+        std::stringstream ss;
+        ss << score;
+        wxGetApp().game->players[position].score->SetLabel(wxString(ss.str()));
+        if (score > wxGetApp().game->maxScore) {
+            wxGetApp().game->maxScore = score;
+            for (int i = 0; i < MAX_PLAYERS; i++) {
+                wxGetApp().game->players[i].bar->SetRange(wxGetApp().game->maxScore);
+            }
+        }
+        wxGetApp().game->players[position].bar->SetValue(score);
+        wxGetApp().game->Layout();
     } else {
-        debugPrint("Invalid game_setPlayerScore: %d, %lu", position, score);
+        errorPrint("gui2: Invalid game_setPlayerScore: %d, %lu", position, score);
     }
 }
 
 void game_highlightPlayer(int position) {
     wxGetApp().createGame();
     if ((position >= 0) && (position < MAX_PLAYERS)) {
-        // TODO Color text/score for this player in red
+        wxGetApp().game->players[position].text->SetForegroundColour(*wxRED);
+        wxGetApp().game->players[position].score->SetForegroundColour(*wxRED);
     } else {
-        debugPrint("Invalid game_highlightPlayer: %d", position);
+        errorPrint("gui2: Invalid game_highlightPlayer: %d", position);
     }
 }
 
@@ -205,7 +278,26 @@ void game_hideWindow(void) {
 
 void game_reset(void) {
     wxGetApp().createGame();
-    // TODO
+
+    game_clearAnswerMarksAndHighlights();
+    game_setControlsEnabled(0);
+    game_setStatusIcon(STATUS_ICON_NONE);
+    game_setStatusText("");
+    game_setQuestion("");
+
+    for (int i = 0; i < MAX_ANSWERS; i++)
+        game_setAnswer(i, "");
+
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        game_setPlayerName(i, "");
+        game_setPlayerScore(i, 0);
+        wxGetApp().game->players[i].bar->SetRange(0);
+        wxGetApp().game->players[i].bar->SetValue(0);
+        wxGetApp().game->players[i].text->SetForegroundColour(*wxBLACK);
+        wxGetApp().game->players[i].score->SetForegroundColour(*wxBLACK);
+    }
+
+    wxGetApp().game->maxScore = 0;
 }
 
 }

@@ -26,12 +26,14 @@ public:
 };
 
 typedef struct {
-    wxPanel* panel;
     wxCheckBox* check;
+    wxStaticBitmap* image;
 } answers_t;
 
 typedef struct {
-
+    wxStaticText* text;
+    wxGauge* bar;
+    wxStaticText* score;
 } players_t;
 
 class GameFrame: public wxFrame {
@@ -50,7 +52,20 @@ public:
 
     wxButton* send;
 
+    wxStaticBitmap* statusIcon;
+    wxStaticText* statusText;
+
+    unsigned long maxScore;
+
+    wxImage* imageNone;
+    wxImage* imageOk;
+    wxImage* imageError;
+    wxImage* imageTimeout;
+
     wxDECLARE_EVENT_TABLE();
+
+private:
+    void createImages();
 };
 
 #endif
