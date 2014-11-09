@@ -34,7 +34,11 @@ static int numCategories = 0;
 static int selectedCategory = -1;
 static pthread_mutex_t mutexCategories = PTHREAD_MUTEX_INITIALIZER;
 
-static int gamePhase = 0;
+static GamePhase_t gamePhase = PHASE_PREPARATION;
+
+GamePhase_t getGamePhase(void) {
+    return gamePhase;
+}
 
 void addCategory(const char *c) {
     pthread_mutex_lock(&mutexCategories);
@@ -210,12 +214,20 @@ void *clientThread(void *arg) {
                         }
                     }
                 } else {
-                    errorPrint("Unexpected message: %c%c%c", response.main.type[0],
+                    errorPrint("Unexpected message in PhasePreparation: %c%c%c", response.main.type[0],
                             response.main.type[1], response.main.type[2]);
                 }
             } else if (gamePhase == PHASE_GAME) {
-                errorPrint("Unexpected message: %c%c%c", response.main.type[0],
-                        response.main.type[1], response.main.type[2]);
+                if (equalLiteral(response.main, "QRQ")) {
+                    debugPrint("Player %d requested next Question...", result);
+                    // TODO
+                } else if (equalLiteral(response.main, "QAN")) {
+                    debugPrint("Player %d sent answer...", result);
+                    // TODO
+                } else {
+                    errorPrint("Unexpected message in PhaseGame: %c%c%c", response.main.type[0],
+                            response.main.type[1], response.main.type[2]);
+                }
             } else {
                 errorPrint("Unexpected message: %c%c%c", response.main.type[0],
                         response.main.type[1], response.main.type[2]);

@@ -21,7 +21,7 @@ PreparationFrame::PreparationFrame(const wxString& title, const wxPoint& pos, co
         : wxFrame(NULL, wxID_ANY, title, pos, size) {
 
     wxStaticBox* boxLeft = new wxStaticBox(this, wxID_ANY, "");
-    wxStaticText* textLeft = new wxStaticText(boxLeft, wxID_ANY, "Fragekataloge:");
+    wxStaticText* textLeft = new wxStaticText(boxLeft, wxID_ANY, "Questionnaires:");
 
     questions = new wxListBox(boxLeft, LIST_Questions, wxDefaultPosition, wxSize(250, 250));
     questions->Enable(false);
@@ -34,7 +34,7 @@ PreparationFrame::PreparationFrame(const wxString& title, const wxPoint& pos, co
     boxLeft->SetSizer(sizerLeft);
 
     wxStaticBox* boxRight = new wxStaticBox(this, wxID_ANY, "");
-    wxStaticText* textRight = new wxStaticText(boxRight, wxID_ANY, "Angemeldete Benutzer:");
+    wxStaticText* textRight = new wxStaticText(boxRight, wxID_ANY, "Connected Users:");
 
     players = new wxListBox(boxRight, wxID_ANY, wxDefaultPosition, wxSize(250, 250));
 
@@ -91,11 +91,11 @@ void preparation_setMode(PreparationMode mode) {
     wxGetApp().createPreparation();
 
     if (mode == PREPARATION_MODE_BUSY) {
-        wxGetApp().preparation->SetStatusText("Bitte warten...");
+        wxGetApp().preparation->SetStatusText("Please wait...");
     } else if (mode == PREPARATION_MODE_NORMAL) {
-        wxGetApp().preparation->SetStatusText("Bitte warten, bis der Spielleiter das Spiel startet...");
+        wxGetApp().preparation->SetStatusText("Please wait until the game master started the game...");
     } else if (mode == PREPARATION_MODE_PRIVILEGED) {
-        wxGetApp().preparation->SetStatusText("Bitte wählen Sie einen Fragekatalog und klicken Sie dann auf Start.");
+        wxGetApp().preparation->SetStatusText("Please select a questionnaire and press Start.");
     } else {
         wxGetApp().preparation->SetStatusText("");
     }

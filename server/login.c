@@ -17,6 +17,7 @@
 
 #include "common/rfc.h"
 #include "common/util.h"
+#include "clientthread.h"
 #include "score.h"
 #include "user.h"
 #include "login.h"
@@ -58,6 +59,13 @@ static void loginHandleSocket(int socket) {
         char s[length + 1];
         s[length] = '\0';
         memcpy(s, response.loginRequest.name, length);
+
+        // Check Game Phase
+        if (getGamePhase() != PHASE_PREPARATION) {
+            sendErrorMessage(socket, "Login Error: Game has already started");
+            infoPrint("Login attempt while game has already started: \"%s\"", s);
+            return;
+        }
 
         // Detect empty name string
         if (length == 0) {

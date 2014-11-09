@@ -60,9 +60,13 @@ void *listenerThread(void *arg) {
         int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
         if (receive == -1) {
             errnoPrint("receive");
+            // TODO handle error case gracefully?
             return NULL;
         } else if (receive == 0) {
             errorPrint("Remote host closed connection");
+            guiShowErrorDialog("The Server was closed!", 0);
+            guiQuit();
+            stopThreads();
             return NULL;
         }
 
@@ -115,6 +119,8 @@ void *listenerThread(void *arg) {
                 buff[len] = '\0';
                 debugPrint("The PhaseGame has now started: \"%s\"", buff);
                 setGamePhase(PHASE_GAME);
+                preparation_hideWindow();
+                game_showWindow();
 
                 // Send QuestionRequest QRQ
                 response.main.type[0] = 'Q';

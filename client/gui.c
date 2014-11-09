@@ -110,8 +110,21 @@ void preparation_onStartClicked(const char *currentSelection) {
         strncpy(response.catalogChange.filename, currentSelection, strlen(currentSelection));
         if (send(guiSocket, &response.main, RFC_BASE_SIZE + strlen(currentSelection), 0) == -1) {
             errnoPrint("send");
+            return;
         }
         setGamePhase(PHASE_GAME);
+        preparation_hideWindow();
+        game_showWindow();
+
+        // Send QuestionRequest QRQ
+        response.main.type[0] = 'Q';
+        response.main.type[1] = 'R';
+        response.main.type[2] = 'Q';
+        response.main.length = htons(0);
+        if (send(guiSocket, &response.main, RFC_BASE_SIZE, 0) == -1) {
+            errnoPrint("send");
+            return;
+        }
     } else {
         debugPrint("Got preparation_onStartClicked in wrong phase!");
     }
