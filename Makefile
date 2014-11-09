@@ -8,7 +8,7 @@
 # Konfiguration #
 #################
 
-OUTPUT_TARGETS = bin/server bin/client bin/loader
+OUTPUT_TARGETS = bin/server bin/client bin/loader bin/guiTest
 WARNINGS = -Wall
 DIALECT_OPTS = -std=gnu99
 
@@ -82,8 +82,12 @@ GUI_MODULES=client/gui/guiApp.o \
 			client/gui/guiMain.o \
 			client/gui/guiPreparation.o
 
+TEST_MODULES = client/gui/guiTest.o
+TEST_MODULES += common/util.o
+
 ifeq ($(ARCH2),Darwin)
 CLIENT_MODULES += $(GUI_MODULES)
+TEST_MODULES += $(GUI_MODULES)
 endif
 
 ###############################################################################
@@ -144,6 +148,9 @@ bin/client: $(CLIENT_MODULES) $(LIBQUIZGUI)
 
 bin/loader: $(LOADER_MODULES)
 	$(CC) $(CFLAGS) -o $@ $^ $(RT)
+
+bin/guiTest: $(TEST_MODULES) $(LIBQUIZGUI)
+	$(CC) $(CFLAGS) -o $@ $^ $(GTK_LIBS) $(RT)
 
 ###############################################################################
 

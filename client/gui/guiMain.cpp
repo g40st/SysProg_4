@@ -8,7 +8,7 @@
 
 extern "C" {
 
-#include "../gui/gui_interface.h"
+#include "gui_interface.h"
 
 void guiInit(int *argc, char ***argv) {
     wxApp::SetInstance(new ClientApp());

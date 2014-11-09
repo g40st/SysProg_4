@@ -8,7 +8,7 @@
 #include "guiPreparation.h"
 
 extern "C" {
-#include "../gui/gui_interface.h"
+#include "gui_interface.h"
 }
 
 wxBEGIN_EVENT_TABLE(PreparationFrame, wxFrame)

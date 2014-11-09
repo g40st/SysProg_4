@@ -7,10 +7,19 @@
 #include "guiApp.h"
 #include "guiGame.h"
 
+ScrolledTextPane::ScrolledTextPane(wxWindow* parent, wxWindowID id) : wxScrolledWindow(parent, id) {
+    wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
+    text = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE_HORIZONTAL);
+    sizer->Add(text, 1, wxALL | wxEXPAND, 0);
+    SetSizer(sizer);
+    FitInside();
+    SetScrollRate(5, 5);
+}
+
 static wxColour defaultColour;
 
 extern "C" {
-#include "../gui/gui_interface.h"
+#include "gui_interface.h"
 }
 
 wxBEGIN_EVENT_TABLE(GameFrame, wxFrame)
@@ -21,7 +30,7 @@ wxEND_EVENT_TABLE()
 GameFrame::GameFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
         : wxFrame(NULL, wxID_ANY, title, pos, size) {
 
-    wxStaticBox* questionBox = new wxStaticBox(this, wxID_ANY, "", wxDefaultPosition,
+    questionBox = new wxStaticBox(this, wxID_ANY, "", wxDefaultPosition,
             wxSize(size.GetWidth() * 3 / 4 - 20, size.GetHeight() - 20));
     wxStaticBox* scoreBox = new wxStaticBox(this, wxID_ANY, "", wxDefaultPosition,
             wxSize(size.GetWidth() / 4 - 20, size.GetHeight() - 20));
@@ -35,7 +44,10 @@ GameFrame::GameFrame(const wxString& title, const wxPoint& pos, const wxSize& si
     wxBoxSizer* questionSizer = new wxBoxSizer(wxVERTICAL);
 
     wxStaticText* questionText = new wxStaticText(questionBox, wxID_ANY, "Question");
-    questionSizer->Add(questionText, 0, wxEXPAND | wxALL, 10);
+    questionSizer->Add(questionText, 0, wxEXPAND | wxALL, 5);
+
+    question = new ScrolledTextPane(questionBox, wxID_ANY);
+    questionSizer->Add(question, 1, wxEXPAND | wxALL | wxALIGN_CENTER, 10);
 
     for (int i = 0; i < MAX_ANSWERS; i++) {
         answers[i].panel = new wxPanel(questionBox);
@@ -51,7 +63,7 @@ GameFrame::GameFrame(const wxString& title, const wxPoint& pos, const wxSize& si
         answers[i].check->Enable(false);
     }
 
-    send = new wxButton(questionBox, BUTTON_Start, "Send");
+    send = new wxButton(questionBox, BUTTON_Send, "Send");
     send->Enable(false);
     questionSizer->Add(send, 0, wxEXPAND | wxALL, 10);
 
@@ -59,7 +71,7 @@ GameFrame::GameFrame(const wxString& title, const wxPoint& pos, const wxSize& si
 
     wxBoxSizer* scoreSizer = new wxBoxSizer(wxVERTICAL);
     wxStaticText* scoreText = new wxStaticText(scoreBox, wxID_ANY, "Scores");
-    scoreSizer->Add(scoreText, 1, wxEXPAND | wxALL, 10);
+    scoreSizer->Add(scoreText, 1, wxEXPAND | wxALL, 5);
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
 
@@ -101,7 +113,9 @@ void game_setStatusIcon(StatusIcon icon) {
 
 void game_setQuestion(const char *text) {
     wxGetApp().createGame();
-    // TODO
+    wxGetApp().game->question->text->SetLabel(wxString(text));
+    wxGetApp().game->question->text->Wrap(wxGetApp().game->questionBox->GetSize().GetWidth() - 80);
+    wxGetApp().game->Layout();
 }
 
 void game_setAnswer(int index, const char *text) {

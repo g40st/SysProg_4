@@ -18,6 +18,13 @@ extern "C" {
 
 #define MAX_ANSWERS 4
 
+class ScrolledTextPane : public wxScrolledWindow {
+public:
+    wxStaticText* text;
+
+    ScrolledTextPane(wxWindow* parent, wxWindowID id);
+};
+
 typedef struct {
     wxPanel* panel;
     wxCheckBox* check;
@@ -34,10 +41,14 @@ public:
     void OnExit(wxCloseEvent& event);
     void buttonPress(wxCommandEvent& event);
 
-    wxButton* send;
+    wxStaticBox* questionBox;
+
+    ScrolledTextPane* question;
 
     answers_t answers[MAX_ANSWERS];
     players_t players[MAX_PLAYERS];
+
+    wxButton* send;
 
     wxDECLARE_EVENT_TABLE();
 };
