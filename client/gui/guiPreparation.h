@@ -29,10 +29,5 @@ public:
     wxDECLARE_EVENT_TABLE();
 };
 
-enum {
-    BUTTON_Start = wxID_HIGHEST + 1,
-    LIST_Questions = wxID_HIGHEST + 2
-};
-
 #endif
 

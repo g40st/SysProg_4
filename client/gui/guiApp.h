@@ -28,5 +28,14 @@ public:
 
 DECLARE_APP(ClientApp);
 
+enum {
+    // PreparationFrame
+    BUTTON_Start = wxID_HIGHEST + 1,
+    LIST_Questions = wxID_HIGHEST + 2,
+
+    // GameFrame
+    BUTTON_Send = wxID_HIGHEST + 3,
+};
+
 #endif
 
