@@ -110,6 +110,9 @@ void preparation_onStartClicked(const char *currentSelection) {
     debugPrint("--> preparation_hideWindow()");
     preparation_hideWindow();
 
+    debugPrint("--> guiShowErrorDialog(\"Error Dialog\", 0)");
+    guiShowErrorDialog("Error Dialog", 0);
+
     createGameFrame();
 }
 
@@ -130,9 +133,6 @@ void game_onSubmitClicked(unsigned char selectedAnswers) {
 
     debugPrint("--> game_reset()");
     game_reset();
-
-    debugPrint("--> guiShowErrorDialog(\"Error Dialog\", 0)");
-    guiShowErrorDialog("Error Dialog", 0);
 }
 
 void game_onWindowClosed(void) {

@@ -33,16 +33,24 @@ void guiShowErrorDialog(const char *message, int quitOnClose) {
     wxMessageDialog dialog(NULL, wxString(message), wxString("Error"));
     dialog.ShowModal();
 
-    if (quitOnClose)
-        wxExit();
+    if (quitOnClose) {
+        if (wxGetApp().preparation != NULL)
+            wxGetApp().preparation->Destroy();
+        if (wxGetApp().game != NULL)
+            wxGetApp().game->Destroy();
+    }
 }
 
 void guiShowMessageDialog(const char *message, int quitOnClose) {
     wxMessageDialog dialog(NULL, wxString(message));
     dialog.ShowModal();
 
-    if (quitOnClose)
-        wxExit();
+    if (quitOnClose) {
+        if (wxGetApp().preparation != NULL)
+            wxGetApp().preparation->Destroy();
+        if (wxGetApp().game != NULL)
+            wxGetApp().game->Destroy();
+    }
 }
 
 }
