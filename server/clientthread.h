@@ -10,14 +10,6 @@
 #ifndef CLIENTTHREAD_H
 #define CLIENTTHREAD_H
 
-typedef enum {
-    PHASE_PREPARATION,
-    PHASE_GAME,
-    PHASE_END
-} GamePhase_t;
-
-GamePhase_t getGamePhase(void);
-
 void addCategory(const char *c);
 int countCategory(void);
 const char *getCategory(int index);

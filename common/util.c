@@ -15,6 +15,29 @@
 #include <time.h>
 #include "util.h"
 
+static GamePhase_t gamePhase = PHASE_PREPARATION;
+static pthread_mutex_t mutexGamePhase = PTHREAD_MUTEX_INITIALIZER;
+
+void setGamePhase(GamePhase_t p) {
+    pthread_mutex_lock(&mutexGamePhase);
+    gamePhase = p;
+    pthread_mutex_unlock(&mutexGamePhase);
+}
+
+GamePhase_t getGamePhase(void) {
+    pthread_mutex_lock(&mutexGamePhase);
+    GamePhase_t r = gamePhase;
+    pthread_mutex_unlock(&mutexGamePhase);
+    return r;
+}
+
+void loopsleep(void) {
+    struct timespec t;
+    t.tv_sec = 0;
+    t.tv_nsec = THREAD_TIMEOUT * 1000000;
+    nanosleep(&t, NULL);
+}
+
 static const char *prog_name = "<unknown>";	/**< Aufrufname des Programms (argv[0]) */
 static int debug_enabled = 0;			/**< Debug-Ausgaben eingeschaltet? */
 
@@ -435,12 +458,5 @@ char *readLine(int fd		/**< Der Dateideskriptor, von dem gelesen werden soll */
 	}
 
 	return NULL;	/* wird nie erreicht */
-}
-
-void loopsleep(void) {
-    struct timespec t;
-    t.tv_sec = 0;
-    t.tv_nsec = THREAD_TIMEOUT * 1000000;
-    nanosleep(&t, NULL);
 }
 

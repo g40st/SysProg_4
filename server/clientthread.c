@@ -34,12 +34,6 @@ static int numCategories = 0;
 static int selectedCategory = -1;
 static pthread_mutex_t mutexCategories = PTHREAD_MUTEX_INITIALIZER;
 
-static GamePhase_t gamePhase = PHASE_PREPARATION;
-
-GamePhase_t getGamePhase(void) {
-    return gamePhase;
-}
-
 void addCategory(const char *c) {
     pthread_mutex_lock(&mutexCategories);
     if (numCategories < (MAX_CATEGORIES - 1)) {
@@ -85,6 +79,8 @@ void cleanCategories(void) {
 void *clientThread(void *arg) {
     int present = 0;
     int loaded = 0;
+    int catalogHasBeenChanged = 0;
+    char *catalogThatHasBeenChanged = NULL;
 
     while (1) {
         // Send BROWSE command to loader
@@ -108,11 +104,11 @@ void *clientThread(void *arg) {
         }
 
         // Send LOAD command to loader
-        if (present && (!loaded) && (gamePhase == PHASE_GAME)) {
+        if (present && (!loaded) && (getGamePhase() == PHASE_GAME)) {
             pthread_mutex_lock(&mutexCategories);
             if ((selectedCategory < 0) || (selectedCategory >= numCategories)) {
                 errorPrint("Error: Trying to load while no category is selected!");
-                gamePhase = PHASE_PREPARATION;
+                setGamePhase(PHASE_PREPARATION);
                 sendWarningMessage(userGetSocket(0), "Please select a category!");
             } else {
                 shm_unlink(SHMEM_NAME);
@@ -159,7 +155,7 @@ void *clientThread(void *arg) {
                 debugPrint("Remote host closed connection");
                 userSetPresent(result, 0);
                 scoreMarkForUpdate();
-            } else if (gamePhase == PHASE_PREPARATION) {
+            } else if (getGamePhase() == PHASE_PREPARATION) {
                 if (equalLiteral(response.main, "CRQ")) {
                     debugPrint("Got CatalogRequest from ID %d", result);
                     response.main.type[0] = 'C';
@@ -178,6 +174,20 @@ void *clientThread(void *arg) {
                         }
                     }
                     pthread_mutex_unlock(&mutexCategories);
+
+                    // Relay CCH message to new clients!
+                    if (catalogHasBeenChanged && (!userGetLastCCH(result))) {
+                        debugPrint("Relaying CatalogChange: %s", catalogThatHasBeenChanged);
+                        int len = strlen(catalogThatHasBeenChanged);
+                        response.main.type[0] = 'C';
+                        response.main.type[1] = 'C';
+                        response.main.type[2] = 'H';
+                        response.main.length = htons(len);
+                        memcpy(response.catalogChange.filename, catalogThatHasBeenChanged, len);
+                        if (send(socket, &response, RFC_BASE_SIZE + len, 0) == -1) {
+                            errnoPrint("send");
+                        }
+                    }
                 } else if (equalLiteral(response.main, "CCH")) {
                     debugPrint("Got CatalogChanged from ID %d", result);
                     pthread_mutex_lock(&mutexCategories);
@@ -197,13 +207,24 @@ void *clientThread(void *arg) {
                                 errnoPrint("send");
                             }
                         }
+                        if (userGetPresent(i))
+                            userSetLastCCH(i, 1);
+                    }
+                    if (catalogThatHasBeenChanged != NULL)
+                        free(catalogThatHasBeenChanged);
+                    catalogThatHasBeenChanged = malloc((ntohs(response.main.length) + 1) * sizeof(char));
+                    if (catalogThatHasBeenChanged == NULL) {
+                        errorPrint("Not enough memory for CCH relaying!");
+                    } else {
+                        memcpy(catalogThatHasBeenChanged, buff, ntohs(response.main.length) + 1);
+                        catalogHasBeenChanged = 1;
                     }
                 } else if (equalLiteral(response.main, "STG")) {
                     if (result != 0) {
                         infoPrint("Received StartGame from unprivileged ID %d", result);
                     } else {
                         debugPrint("Got StartGame game master");
-                        gamePhase = PHASE_GAME;
+                        setGamePhase(PHASE_GAME);
                         for (int i = 0; i < MAX_PLAYERS; i++) {
                             if ((i != result) && userGetPresent(i)) {
                                 if (send(userGetSocket(i), &response,
@@ -217,7 +238,7 @@ void *clientThread(void *arg) {
                     errorPrint("Unexpected message in PhasePreparation: %c%c%c", response.main.type[0],
                             response.main.type[1], response.main.type[2]);
                 }
-            } else if (gamePhase == PHASE_GAME) {
+            } else if (getGamePhase() == PHASE_GAME) {
                 if (equalLiteral(response.main, "QRQ")) {
                     debugPrint("Player %d requested next Question...", result);
                     // TODO

@@ -23,6 +23,7 @@ typedef struct {
     char name[33];
     int score;
     int socket;
+    int cch;
 } user_t;
 
 static user_t users[MAX_PLAYERS];
@@ -37,6 +38,7 @@ void userInit(void) {
             users[i].name[j] = '\0';
         users[i].score = 0;
         users[i].socket = -1;
+        users[i].cch = 0;
     }
     mainSocket = -1;
     pthread_mutex_unlock(&mutexUsers);
@@ -155,6 +157,28 @@ int userGetScore(int index) {
     }
     pthread_mutex_unlock(&mutexUsers);
     return score;
+}
+
+void userSetLastCCH(int index, int cch) {
+    pthread_mutex_lock(&mutexUsers);
+    if ((index >= 0) && (index < MAX_PLAYERS)) {
+        users[index].cch = cch;
+    } else {
+        debugPrint("Invalid userSetLastCCH: %d", index);
+    }
+    pthread_mutex_unlock(&mutexUsers);
+}
+
+int userGetLastCCH(int index) {
+    int cch = 0;
+    pthread_mutex_lock(&mutexUsers);
+    if ((index >= 0) && (index < MAX_PLAYERS)) {
+        cch = users[index].cch;
+    } else {
+        debugPrint("Invalid userGetLastCCH: %d", index);
+    }
+    pthread_mutex_unlock(&mutexUsers);
+    return cch;
 }
 
 int waitForSockets(int timeout) {

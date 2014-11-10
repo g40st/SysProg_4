@@ -29,6 +29,9 @@ const char *userGetName(int index);
 
 int userGetScore(int index);
 
+void userSetLastCCH(int index, int cch);
+int userGetLastCCH(int index);
+
 // Returns -1 on timeout, -2 on error, else ID
 int waitForSockets(int timeout);
 

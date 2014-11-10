@@ -22,21 +22,7 @@
 #include "listener.h"
 
 static int running = 1;
-static GamePhase_t gamePhase = PHASE_PREPARATION;
 static pthread_mutex_t mutexUsers = PTHREAD_MUTEX_INITIALIZER;
-
-void setGamePhase(GamePhase_t p) {
-    pthread_mutex_lock(&mutexUsers);
-    gamePhase = p;
-    pthread_mutex_unlock(&mutexUsers);
-}
-
-GamePhase_t getGamePhase(void) {
-    pthread_mutex_lock(&mutexUsers);
-    GamePhase_t r = gamePhase;
-    pthread_mutex_unlock(&mutexUsers);
-    return r;
-}
 
 int getRunning(void) {
     pthread_mutex_lock(&mutexUsers);

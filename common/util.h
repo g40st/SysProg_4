@@ -22,6 +22,17 @@
 #define THREAD_TIMEOUT 25
 #define SOCKET_TIMEOUT THREAD_TIMEOUT
 
+typedef enum {
+    PHASE_PREPARATION,
+    PHASE_GAME,
+    PHASE_END
+} GamePhase_t;
+
+void setGamePhase(GamePhase_t p);
+GamePhase_t getGamePhase(void);
+
+void loopsleep(void);
+
 /* Wir benutzen die __attribute__ Erweiterung von GCC zur Überprüfung
  * der Argumente von debugPrint. Damit andere Compiler sich nicht beschweren,
  * definieren wir auf diesen __attribute__ als leeres Makro. */
@@ -47,6 +58,5 @@ void vhexdump(const void *ptr, size_t n, const char *fmt, va_list args);
 
 char *readLine(int fd);
 
-void loopsleep(void);
-
 #endif
+
