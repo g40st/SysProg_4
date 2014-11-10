@@ -214,7 +214,7 @@ int waitForSockets(int timeout) {
             // SIGINT was caught
             close(userGetMainSocket());
             cleanCategories();
-            return 0;
+            return -2;
         } else {
             errnoPrint("select");
             return -2;

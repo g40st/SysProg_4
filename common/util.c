@@ -18,6 +18,9 @@
 static GamePhase_t gamePhase = PHASE_PREPARATION;
 static pthread_mutex_t mutexGamePhase = PTHREAD_MUTEX_INITIALIZER;
 
+static int running = 1;
+static pthread_mutex_t mutexRunning = PTHREAD_MUTEX_INITIALIZER;
+
 void setGamePhase(GamePhase_t p) {
     pthread_mutex_lock(&mutexGamePhase);
     gamePhase = p;
@@ -29,6 +32,19 @@ GamePhase_t getGamePhase(void) {
     GamePhase_t r = gamePhase;
     pthread_mutex_unlock(&mutexGamePhase);
     return r;
+}
+
+int getRunning(void) {
+    pthread_mutex_lock(&mutexRunning);
+    int r = running;
+    pthread_mutex_unlock(&mutexRunning);
+    return r;
+}
+
+void stopThreads(void) {
+    pthread_mutex_lock(&mutexRunning);
+    running = 0;
+    pthread_mutex_unlock(&mutexRunning);
 }
 
 void loopsleep(void) {

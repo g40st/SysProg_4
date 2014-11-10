@@ -82,7 +82,7 @@ void *clientThread(void *arg) {
     int catalogHasBeenChanged = 0;
     char *catalogThatHasBeenChanged = NULL;
 
-    while (1) {
+    while (getRunning()) {
         // Send BROWSE command to loader
         // TODO should we really BROWSE only if a user is logged in?
         if ((!present) && userGetPresent(0)) {
@@ -144,17 +144,27 @@ void *clientThread(void *arg) {
         int result = waitForSockets(SOCKET_TIMEOUT);
         if (result == -2) {
             debugPrint("Error waiting for socket activity...");
+            // TODO handle error?
         } else if (result > -1) {
             // Read received message
             int socket = userGetSocket(result);
             rfc response;
             int receive = receivePacket(socket, &response);
             if (receive == -1) {
-                errnoPrint("receive");
+                // TODO handle error?
             } else if (receive == 0) {
-                debugPrint("Remote host closed connection");
                 userSetPresent(result, 0);
-                scoreMarkForUpdate();
+                if (result == 0) {
+                    debugPrint("Game master closed connection!");
+                    for (int i = 1; i < MAX_PLAYERS; i++) {
+                        if (userGetPresent(i))
+                            sendErrorMessage(userGetSocket(i), "Game master closed connection!");
+                    }
+                    stopThreads();
+                } else {
+                    debugPrint("Player closed connection!");
+                    scoreMarkForUpdate();
+                }
             } else if (getGamePhase() == PHASE_PREPARATION) {
                 if (equalLiteral(response.main, "CRQ")) {
                     debugPrint("Got CatalogRequest from ID %d", result);
@@ -170,7 +180,7 @@ void *clientThread(void *arg) {
                         }
                         response.main.length = htons(len);
                         if (send(socket, &response, RFC_BASE_SIZE + len, 0) == -1) {
-                            errnoPrint("send");
+                            errnoPrint("ClientThread1 send");
                         }
                     }
                     pthread_mutex_unlock(&mutexCategories);
@@ -185,7 +195,7 @@ void *clientThread(void *arg) {
                         response.main.length = htons(len);
                         memcpy(response.catalogChange.filename, catalogThatHasBeenChanged, len);
                         if (send(socket, &response, RFC_BASE_SIZE + len, 0) == -1) {
-                            errnoPrint("send");
+                            errnoPrint("ClientThread2 send");
                         }
                     }
                 } else if (equalLiteral(response.main, "CCH")) {
@@ -204,7 +214,7 @@ void *clientThread(void *arg) {
                         if ((i != result) && userGetPresent(i)) {
                             if (send(userGetSocket(i), &response,
                                         RFC_BASE_SIZE + ntohs(response.main.length), 0) == -1) {
-                                errnoPrint("send");
+                                errnoPrint("ClientThread3 send");
                             }
                         }
                         if (userGetPresent(i))
@@ -229,7 +239,7 @@ void *clientThread(void *arg) {
                             if ((i != result) && userGetPresent(i)) {
                                 if (send(userGetSocket(i), &response,
                                             RFC_BASE_SIZE + ntohs(response.main.length), 0) == -1) {
-                                    errnoPrint("send");
+                                    errnoPrint("ClientThread4 send");
                                 }
                             }
                         }

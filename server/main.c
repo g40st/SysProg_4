@@ -28,10 +28,8 @@
 #include <sys/select.h>
 #include <signal.h>
 
-static int running = 1;
-
 static void intHandler(int dummy) {
-    running = 0;
+    stopThreads();
     debugPrint("Caught SIGINT, aborting...");
 }
 
@@ -183,7 +181,7 @@ int main(int argc, char **argv) {
     sigdelset(&blockset, SIGINT);
 
     debugPrint("Waiting for connections...");
-    while (running) {
+    while (getRunning()) {
         if (listen(listen_socket, MAX_QUERYS) == -1) {
             errnoPrint("listen");
             close(listen_socket);

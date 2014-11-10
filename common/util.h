@@ -31,6 +31,9 @@ typedef enum {
 void setGamePhase(GamePhase_t p);
 GamePhase_t getGamePhase(void);
 
+int getRunning(void);
+void stopThreads(void);
+
 void loopsleep(void);
 
 /* Wir benutzen die __attribute__ Erweiterung von GCC zur Überprüfung

@@ -45,7 +45,7 @@ static void sendPlayerListToAll() {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (userGetPresent(i)) {
             if (send(userGetSocket(i), &list, RFC_LST_SIZE(c), 0) == -1) {
-                errnoPrint("send");
+                errnoPrint("ScoreThread send");
             }
         }
     }
@@ -58,7 +58,7 @@ void scoreMarkForUpdate(void) {
 }
 
 void *scoreThread(void *arg) {
-    while (1) {
+    while (getRunning()) {
         pthread_mutex_lock(&scoreMutex);
         int sf = scoreFlag;
         if (sf > 0)

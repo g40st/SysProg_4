@@ -21,22 +21,6 @@
 #include "gui.h"
 #include "listener.h"
 
-static int running = 1;
-static pthread_mutex_t mutexUsers = PTHREAD_MUTEX_INITIALIZER;
-
-int getRunning(void) {
-    pthread_mutex_lock(&mutexUsers);
-    int r = running;
-    pthread_mutex_unlock(&mutexUsers);
-    return r;
-}
-
-void stopThreads(void) {
-    pthread_mutex_lock(&mutexUsers);
-    running = 0;
-    pthread_mutex_unlock(&mutexUsers);
-}
-
 void *listenerThread(void *arg) {
     int socket = *((int *)arg);
     rfc response;

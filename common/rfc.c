@@ -38,7 +38,7 @@ static int sendErrorWarningMessage(int socket, const char *message, uint8_t subt
     response.errorWarning.subtype = subtype;
     strncpy(response.errorWarning.message, message, length);
     if (send(socket, &response, RFC_ERR_SIZE + length, 0) == -1) {
-        errnoPrint("send");
+        errnoPrint("ErrorWarning send");
         return 0;
     }
     return 1;

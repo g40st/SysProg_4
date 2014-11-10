@@ -118,7 +118,7 @@ static void loginHandleSocket(int socket) {
 }
 
 void *loginThread(void *arg) {
-    while (1) {
+    while (getRunning()) {
         pthread_mutex_lock(&socketMutex);
         while (socketCount > 0) {
             int sock = sockets[socketCount - 1];
