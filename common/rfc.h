@@ -116,5 +116,8 @@ int equalLiteral(struct rfcMain m, const char *s);
 int sendErrorMessage(int socket, const char *message);
 int sendWarningMessage(int socket, const char *message);
 
+// Return 1 on success, 0 on connection close, -1 on error
+int receivePacket(int socket, rfc *r);
+
 #endif
 

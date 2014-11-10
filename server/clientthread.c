@@ -148,7 +148,7 @@ void *clientThread(void *arg) {
             // Read received message
             int socket = userGetSocket(result);
             rfc response;
-            int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
+            int receive = receivePacket(socket, &response);
             if (receive == -1) {
                 errnoPrint("receive");
             } else if (receive == 0) {

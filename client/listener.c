@@ -43,9 +43,8 @@ void *listenerThread(void *arg) {
     debugPrint("ListenerThread is starting its loop...");
     while (getRunning()) {
         // Receive message
-        int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
+        int receive = receivePacket(socket, &response);
         if (receive == -1) {
-            errnoPrint("receive");
             // TODO handle error case gracefully?
             return NULL;
         } else if (receive == 0) {

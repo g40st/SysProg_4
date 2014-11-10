@@ -52,3 +52,27 @@ int sendWarningMessage(int socket, const char *message) {
     return sendErrorWarningMessage(socket, message, 0);
 }
 
+int receivePacket(int socket, rfc *r) {
+    void *rec = r;
+    int receive = recv(socket, rec, RFC_BASE_SIZE, 0);
+    if (receive == -1) {
+        errnoPrint("receive");
+        return -1;
+    } else if (receive == 0) {
+        return 0;
+    }
+
+    int len = ntohs(r->main.length);
+    if (len > 0) {
+        receive = recv(socket, rec + RFC_BASE_SIZE, len, 0);
+        if (receive == -1) {
+            errnoPrint("receive");
+            return -1;
+        } else if (receive == 0) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+

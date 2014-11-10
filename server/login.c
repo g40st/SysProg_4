@@ -37,7 +37,7 @@ void loginAddSocket(int sock) {
 
 static void loginHandleSocket(int socket) {
     rfc response;
-    int receive = recv(socket, &response, RFC_MAX_SIZE, 0);
+    int receive = receivePacket(socket, &response);
     if (receive == -1) {
         errnoPrint("receive");
         return;

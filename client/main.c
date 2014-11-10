@@ -151,9 +151,8 @@ int main(int argc, char **argv) {
 
     debugPrint("Waiting for response...");
     rfc response;
-    int receive = recv(client_socket, &response, RFC_MAX_SIZE, 0);
+    int receive = receivePacket(client_socket, &response);
     if (receive == -1) {
-        errorPrint("receive: %s", strerror(errno));
         return 1;
     } else if (receive == 0) {
         errorPrint("Remote host closed connection");
