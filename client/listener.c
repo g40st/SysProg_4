@@ -21,6 +21,22 @@
 #include "gui.h"
 #include "listener.h"
 
+static int playerCount;
+static pthread_mutex_t playerCountMutex = PTHREAD_MUTEX_INITIALIZER;
+
+void setPlayerCount(int pc) {
+    pthread_mutex_lock(&playerCountMutex);
+    playerCount = pc;
+    pthread_mutex_unlock(&playerCountMutex);
+}
+
+int getPlayerCount(void) {
+    pthread_mutex_lock(&playerCountMutex);
+    int pc = playerCount;
+    pthread_mutex_unlock(&playerCountMutex);
+    return pc;
+}
+
 void *listenerThread(void *arg) {
     int socket = *((int *)arg);
     rfc response;
@@ -52,6 +68,7 @@ void *listenerThread(void *arg) {
                 for (int i = 0; i < count; i++) {
                     preparation_addPlayer(response.playerList.players[i].name);
                 }
+                setPlayerCount(count);
             } else if (equalLiteral(response.main, "CCH")) {
                 // Mark selected catalog
                 int len = ntohs(response.main.length);

@@ -101,6 +101,11 @@ void preparation_onStartClicked(const char *currentSelection) {
             guiShowErrorDialog("Can't start game without selected category!", 0);
             return;
         }
+        if (getPlayerCount() <= 1) {
+            debugPrint("Clicked start without another player!");
+            guiShowErrorDialog("Can't start game without another player!", 0);
+            return;
+        }
         debugPrint("preparation_onStartClicked: %s", currentSelection);
         rfc response;
         response.main.type[0] = 'S';
