@@ -16,6 +16,7 @@
 
 #include "common/rfc.h"
 #include "common/util.h"
+#include "fragewechsel.h"
 #include "gui/gui_interface.h"
 #include "listener.h"
 #include "gui.h"
@@ -120,6 +121,7 @@ void preparation_onStartClicked(const char *currentSelection) {
         setGamePhase(PHASE_GAME);
         preparation_hideWindow();
         game_showWindow();
+        requestNewQuestion();
 
         // Send QuestionRequest QRQ
         response.main.type[0] = 'Q';

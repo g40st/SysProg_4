@@ -10,6 +10,8 @@
 #ifndef CATALOG_H
 #define CATALOG_H
 
+#include "common/question.h"
+
 int createPipes(void);
 int forkLoader(void);
 
@@ -18,7 +20,9 @@ void readLineLoader(char *buff, int size);
 
 int loaderOpenSharedMemory(int size);
 void loaderCloseSharedMemory(void);
-void *getSharedMemory(void);
+
+int getQuestionCount(void);
+Question *getQuestion(int index);
 
 #endif
 

@@ -24,6 +24,7 @@ typedef struct {
     int score;
     int socket;
     int cch;
+    int question;
 } user_t;
 
 static user_t users[MAX_PLAYERS];
@@ -39,6 +40,7 @@ void userInit(void) {
         users[i].score = 0;
         users[i].socket = -1;
         users[i].cch = 0;
+        users[i].question = 0;
     }
     mainSocket = -1;
     pthread_mutex_unlock(&mutexUsers);
@@ -159,6 +161,22 @@ int userGetScore(int index) {
     return score;
 }
 
+static unsigned long scoreForTimeLeft(unsigned long timeLeft, unsigned long timeout) {
+    unsigned long score = (timeLeft * 1000UL) / timeout;
+    score = ((score + 5UL) / 10UL) * 10UL;
+    return score;
+}
+
+void userAddScore(int index, unsigned long timeLeft, unsigned long timeout) {
+    pthread_mutex_lock(&mutexUsers);
+    if ((index >= 0) && (index < MAX_PLAYERS)) {
+        users[index].score += scoreForTimeLeft(timeLeft, timeout);
+    } else {
+        debugPrint("Invalid userAddScore: %d %lu %lu", index, timeLeft, timeout);
+    }
+    pthread_mutex_unlock(&mutexUsers);
+}
+
 void userSetLastCCH(int index, int cch) {
     pthread_mutex_lock(&mutexUsers);
     if ((index >= 0) && (index < MAX_PLAYERS)) {
@@ -179,6 +197,28 @@ int userGetLastCCH(int index) {
     }
     pthread_mutex_unlock(&mutexUsers);
     return cch;
+}
+
+int userGetQuestion(int index) {
+    int q = 0;
+    pthread_mutex_lock(&mutexUsers);
+    if ((index >= 0) && (index < MAX_PLAYERS)) {
+        q = users[index].question;
+    } else {
+        debugPrint("Invalid userGetQuestion: %d", index);
+    }
+    pthread_mutex_unlock(&mutexUsers);
+    return q;
+}
+
+void userSetQuestion(int index, int q) {
+    pthread_mutex_lock(&mutexUsers);
+    if ((index >= 0) && (index < MAX_PLAYERS)) {
+        users[index].question = q;
+    } else {
+        debugPrint("Invalid userSetQuestion: %d", index);
+    }
+    pthread_mutex_unlock(&mutexUsers);
 }
 
 int waitForSockets(int timeout) {

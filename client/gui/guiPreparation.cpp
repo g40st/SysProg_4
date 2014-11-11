@@ -117,7 +117,7 @@ void preparation_showWindow(void) {
 void preparation_addCatalog(const char *name) {
     wxGetApp().createPreparation();
     wxString s(name);
-    wxGetApp().preparation->questions->InsertItems(1, &s, 0);
+    wxGetApp().preparation->questions->Append(1, &s);
 }
 
 int preparation_selectCatalog(const char *name) {
@@ -133,7 +133,7 @@ int preparation_selectCatalog(const char *name) {
 void preparation_addPlayer(const char *name) {
     wxGetApp().createPreparation();
     wxString s(name);
-    wxGetApp().preparation->players->InsertItems(1, &s, 0);
+    wxGetApp().preparation->players->Append(1, &s);
 }
 
 int preparation_removePlayer(const char *name) {

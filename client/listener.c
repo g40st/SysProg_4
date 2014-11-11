@@ -17,6 +17,7 @@
 
 #include "common/rfc.h"
 #include "common/util.h"
+#include "fragewechsel.h"
 #include "gui/gui_interface.h"
 #include "gui.h"
 #include "listener.h"
@@ -67,6 +68,9 @@ void *listenerThread(void *arg) {
                 preparation_clearPlayers();
                 for (int i = 0; i < count; i++) {
                     preparation_addPlayer(response.playerList.players[i].name);
+                    debugPrint("LST: %d %s %d", response.playerList.players[i].id,
+                            response.playerList.players[i].name,
+                            ntohl(response.playerList.players[i].points));
                 }
                 setPlayerCount(count);
             } else if (equalLiteral(response.main, "CCH")) {
@@ -105,6 +109,7 @@ void *listenerThread(void *arg) {
                 buff[len] = '\0';
                 debugPrint("The PhaseGame has now started: \"%s\"", buff);
                 setGamePhase(PHASE_GAME);
+                requestNewQuestion();
                 preparation_hideWindow();
                 game_showWindow();
 

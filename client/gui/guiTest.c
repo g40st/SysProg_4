@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     debugPrint("--> preparation_setMode(PREPARATION_MODE_PRIVILEGED)");
     preparation_setMode(PREPARATION_MODE_PRIVILEGED);
 
-    debugPrint("--> preparation_addCatalog(\"Test1\")");
+    debugPrint("--> preparation_addCatalog(\"Test\")");
     preparation_addCatalog("Test");
 
     debugPrint("--> preparation_addPlayer(\"Test\")");

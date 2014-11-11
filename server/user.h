@@ -28,9 +28,13 @@ void userSetName(int index, const char *name);
 const char *userGetName(int index);
 
 int userGetScore(int index);
+void userAddScore(int index, unsigned long timeLeft, unsigned long timeout);
 
 void userSetLastCCH(int index, int cch);
 int userGetLastCCH(int index);
+
+void userSetQuestion(int index, int q);
+int userGetQuestion(int index);
 
 // Returns -1 on timeout, -2 on error, else ID
 int waitForSockets(int timeout);

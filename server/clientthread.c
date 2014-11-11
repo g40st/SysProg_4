@@ -84,7 +84,6 @@ void *clientThread(void *arg) {
 
     while (getRunning()) {
         // Send BROWSE command to loader
-        // TODO should we really BROWSE only if a user is logged in?
         if ((!present) && userGetPresent(0)) {
             present = 1;
             sendLoaderCommand(BROWSE_CMD);
@@ -131,7 +130,6 @@ void *clientThread(void *arg) {
                     if (!loaderOpenSharedMemory(size)) {
                         // TODO handle error. Change GamePhase back? Simply exit?
                     }
-                    // TODO send STG messages
                 } else {
                     errorPrint("Unknown response from loader: \"%s\"", buff);
                     // TODO handle error. Change GamePhase back? Simply exit?

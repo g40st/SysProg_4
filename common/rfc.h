@@ -15,6 +15,8 @@
 #define RFC_VERSION_NUMBER 6
 #define MAX_STRING_LENGTH 256
 
+#define RFC_QUESTION_SHMEM_SIZE 770
+
 #pragma pack(push,1)
 
 #define RFC_BASE_SIZE 5

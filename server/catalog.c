@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "common/rfc.h"
 #include "common/server_loader_protocol.h"
 #include "common/util.h"
 #include "catalog.h"
@@ -100,10 +101,10 @@ void readLineLoader(char *buff, int size) {
 
 static int shm_size = 0;
 static int shm_fd = -1;
-static void *shm_data = NULL;
+static Question *shm_data = NULL;
 
 int loaderOpenSharedMemory(int size) {
-    shm_size = size;
+    shm_size = size * RFC_QUESTION_SHMEM_SIZE;
     shm_fd = shm_open(SHMEM_NAME, O_RDONLY, (mode_t)0);
     if (shm_fd == -1) {
         errnoPrint("shm_open");
@@ -138,7 +139,16 @@ void loaderCloseSharedMemory(void) {
     }
 }
 
-void *getSharedMemory(void) {
-    return shm_data;
+int getQuestionCount(void) {
+    return shm_size / RFC_QUESTION_SHMEM_SIZE;
+}
+
+Question *getQuestion(int index) {
+    if ((index >= 0) && (index < getQuestionCount())) {
+        return shm_data + index;
+    } else {
+        debugPrint("Invalid getQuestion: %d", index);
+        return NULL;
+    }
 }
 
