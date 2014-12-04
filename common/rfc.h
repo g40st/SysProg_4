@@ -85,6 +85,12 @@ struct rfcErrorWarning {
     char message[MAX_STRING_LENGTH]; // Message. Not '\0'-terminated!
 };
 
+#define RFC_QUESTION_SIZE (QUESTION_SIZE + (NUM_ANSWERS * ANSWER_SIZE) + 1)
+struct rfcQuestion {
+    struct rfcMain main;
+    QuestionMessage question;
+};
+
 typedef union {
     struct rfcMain main;
 
@@ -98,7 +104,7 @@ typedef union {
     struct rfcLoginResponseOK loginResponseOK; // LOK
     struct rfcCatalog catalogResponse; // CRE
     struct rfcPlayerList playerList; // LST
-    QuestionMessage question; // QUE
+    struct rfcQuestion question; // QUE
     struct rfcQuestionResult questionResult; // QRE
     struct rfcGameOver gameOver; // GOV
     struct rfcErrorWarning errorWarning; // ERR

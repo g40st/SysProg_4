@@ -18,13 +18,15 @@
 #include "clientthread.h"
 #include "user.h"
 
+#define MAX_QUESTIONS 128
+
 typedef struct {
     int present;
     char name[33];
     int score;
     int socket;
     int cch;
-    int question;
+    int question[MAX_QUESTIONS];
 } user_t;
 
 static user_t users[MAX_PLAYERS];
@@ -40,7 +42,8 @@ void userInit(void) {
         users[i].score = 0;
         users[i].socket = -1;
         users[i].cch = 0;
-        users[i].question = 0;
+        for (int j = 0; j < MAX_QUESTIONS; j++)
+            users[i].question[j] = -1;
     }
     mainSocket = -1;
     pthread_mutex_unlock(&mutexUsers);
@@ -199,26 +202,74 @@ int userGetLastCCH(int index) {
     return cch;
 }
 
-int userGetQuestion(int index) {
+int userGetQuestion(int index, int question) {
     int q = 0;
     pthread_mutex_lock(&mutexUsers);
-    if ((index >= 0) && (index < MAX_PLAYERS)) {
-        q = users[index].question;
+    if ((index >= 0) && (index < MAX_PLAYERS) && (question >= 0) && (question < MAX_QUESTIONS)) {
+        q = users[index].question[question];
     } else {
-        debugPrint("Invalid userGetQuestion: %d", index);
+        debugPrint("Invalid userGetQuestion: %d %d", index, question);
     }
     pthread_mutex_unlock(&mutexUsers);
     return q;
 }
 
-void userSetQuestion(int index, int q) {
+void userSetQuestion(int index, int question, int q) {
     pthread_mutex_lock(&mutexUsers);
     if ((index >= 0) && (index < MAX_PLAYERS)) {
-        users[index].question = q;
+        users[index].question[question] = q;
     } else {
-        debugPrint("Invalid userSetQuestion: %d", index);
+        debugPrint("Invalid userSetQuestion: %d %d", index, question);
     }
     pthread_mutex_unlock(&mutexUsers);
+}
+
+int userCountQuestionsAnswered(int index) {
+    int c = 0;
+    pthread_mutex_lock(&mutexUsers);
+    if ((index >= 0) && (index < MAX_PLAYERS)) {
+        for (int i = 0; i < MAX_QUESTIONS; i++) {
+            if (users[index].question[i] > -1)
+                c++;
+        }
+    } else {
+        debugPrint("Invalid userCountQuestionsAnswered: %d", index);
+    }
+    pthread_mutex_unlock(&mutexUsers);
+    return c;
+}
+
+int userNextFreeQuestion(int index, int c, int max) {
+    int r = 0;
+    int n = c;
+    pthread_mutex_lock(&mutexUsers);
+    if ((index >= 0) && (index < MAX_PLAYERS)) {
+        while (1) {
+            if (users[index].question[r] == -1) {
+                if (r < (max - 1))
+                    r++;
+                else {
+                    if (n == c) {
+                        pthread_mutex_unlock(&mutexUsers);
+                        return -1;
+                    } else {
+                        r = 0;
+                    }
+                }
+            } else {
+                if (n > 0) {
+                    n--;
+                } else {
+                    pthread_mutex_unlock(&mutexUsers);
+                    return r;
+                }
+            }
+        }
+    } else {
+        debugPrint("Invalid userNextFreeQuestion: %d", index);
+    }
+    pthread_mutex_unlock(&mutexUsers);
+    return r;
 }
 
 int waitForSockets(int timeout) {

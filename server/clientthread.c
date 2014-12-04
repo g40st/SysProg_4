@@ -248,11 +248,56 @@ void *clientThread(void *arg) {
                 }
             } else if (getGamePhase() == PHASE_GAME) {
                 if (equalLiteral(response.main, "QRQ")) {
-                    debugPrint("Player %d requested next Question...", result);
-                    // TODO
+                    debugPrint("Player %d requested first Question...", result);
+                    if (userCountQuestionsAnswered(result) < getQuestionCount()) {
+                        // Find next question, send to client
+                        /*
+                        int qi = userNextFreeQuestion(result, rand() % getQuestionCount(), getQuestionCount());
+                        Question *q = getQuestion(qi);
+                        for (int i = 0; i < QUESTION_SIZE; i++) {
+                            response.question.question.question[i] = q->question[i];
+                        }
+                        for (int i = 0; i < NUM_ANSWERS; i++) {
+                            for (int j = 0; j < ANSWER_SIZE; j++) {
+                                response.question.question.answers[i][j] = q->answers[i][j];
+                            }
+                        }
+                        response.question.question.timeout = q->timeout;
+                        response.main.type[0] = 'Q';
+                        response.main.type[1] = 'U';
+                        response.main.type[2] = 'E';
+                        response.main.length = htons(RFC_QUESTION_SIZE);
+                        if (send(userGetSocket(result), &response,
+                                    RFC_BASE_SIZE + RFC_QUESTION_SIZE, 0) == -1) {
+                            errnoPrint("ClientThread5 send");
+                        }
+                        */
+
+                        Question *q = getQuestion(rand() % getQuestionCount());
+                        for (int i = 0; i < QUESTION_SIZE; i++) {
+                            response.question.question.question[i] = q->question[i];
+                        }
+                        for (int i = 0; i < NUM_ANSWERS; i++) {
+                            for (int j = 0; j < ANSWER_SIZE; j++) {
+                                response.question.question.answers[i][j] = q->answers[i][j];
+                            }
+                        }
+                        response.question.question.timeout = q->timeout;
+                        response.main.type[0] = 'Q';
+                        response.main.type[1] = 'U';
+                        response.main.type[2] = 'E';
+                        response.main.length = htons(RFC_QUESTION_SIZE);
+                        if (send(userGetSocket(result), &response,
+                                    RFC_BASE_SIZE + RFC_QUESTION_SIZE, 0) == -1) {
+                            errnoPrint("ClientThread5 send");
+                        }
+                    } else {
+                        // TODO All questions answered, wait...?
+                    }
                 } else if (equalLiteral(response.main, "QAN")) {
                     debugPrint("Player %d sent answer...", result);
-                    // TODO
+                    // TODO check answer, give score
+                    // send next question?
                 } else {
                     errorPrint("Unexpected message in PhaseGame: %c%c%c", response.main.type[0],
                             response.main.type[1], response.main.type[2]);

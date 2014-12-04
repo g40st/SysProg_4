@@ -10,6 +10,8 @@
 #ifndef SCORE_H
 #define SCORE_H
 
+unsigned long scoreForTimeLeft(unsigned long timeLeft, unsigned long timeout);
+
 void scoreMarkForUpdate(void);
 
 void *scoreThread(void *arg);

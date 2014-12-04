@@ -33,8 +33,10 @@ void userAddScore(int index, unsigned long timeLeft, unsigned long timeout);
 void userSetLastCCH(int index, int cch);
 int userGetLastCCH(int index);
 
-void userSetQuestion(int index, int q);
-int userGetQuestion(int index);
+void userSetQuestion(int index, int question, int q);
+int userGetQuestion(int index, int question);
+int userCountQuestionsAnswered(int index);
+int userNextFreeQuestion(int index, int c, int max);
 
 // Returns -1 on timeout, -2 on error, else ID
 int waitForSockets(int timeout);

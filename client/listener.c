@@ -129,11 +129,11 @@ void *listenerThread(void *arg) {
         } else if (getGamePhase() == PHASE_GAME) {
             if (equalLiteral(response.main, "QUE")) {
                 if (ntohs(response.main.length) == 769) {
-                    debugPrint("Received new question-answer set... Timeout: %d", response.question.timeout);
+                    debugPrint("Received new question-answer set... Timeout: %d", response.question.question.timeout);
                     game_clearAnswerMarksAndHighlights();
-                    game_setQuestion(response.question.question);
+                    game_setQuestion(response.question.question.question);
                     for (int i = 0; i < NUM_ANSWERS; i++)
-                        game_setAnswer(i, response.question.answers[i]);
+                        game_setAnswer(i, response.question.question.answers[i]);
                     // TODO do something with timeout!
                 } else if (ntohs(response.main.length) == 0) {
                     // Move to End Phase
