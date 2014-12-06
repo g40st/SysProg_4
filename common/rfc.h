@@ -67,6 +67,7 @@ struct rfcQuestionAnswered {
     uint8_t selection; // Bitmask of selected answers
 };
 
+#define RFC_QUESTION_RESULT_SIZE (RFC_BASE_SIZE + 2)
 struct rfcQuestionResult {
     struct rfcMain main; // Length: 2
     uint8_t timedOut; // Not zero when timeout was reached

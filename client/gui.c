@@ -23,6 +23,16 @@
 
 static int guiSocket = -1;
 
+static unsigned char lastResult = 0;
+static pthread_mutex_t guiMutex = PTHREAD_MUTEX_INITIALIZER;
+
+unsigned char guiGetLastResult(void) {
+    pthread_mutex_lock(&guiMutex);
+    unsigned char r = lastResult;
+    pthread_mutex_unlock(&guiMutex);
+    return r;
+}
+
 int handleErrorWarningMessage(rfc response) {
     if (equalLiteral(response.main, "ERR")) {
         int length = ntohs(response.main.length) - RFC_ERR_SIZE;
@@ -148,6 +158,8 @@ void game_onSubmitClicked(unsigned char selectedAnswers) {
         errorPrint("game_onSubmitClicked: Wrong initialization order?!");
         return;
     }
+
+    lastResult = selectedAnswers;
 
     if (getGamePhase() == PHASE_GAME) {
         debugPrint("game_onSubmitClicked: %u", (unsigned)selectedAnswers);

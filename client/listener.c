@@ -130,11 +130,15 @@ void *listenerThread(void *arg) {
             if (equalLiteral(response.main, "QUE")) {
                 if (ntohs(response.main.length) == 769) {
                     debugPrint("Received new question-answer set... Timeout: %d", response.question.question.timeout);
+                    game_setStatusIcon(STATUS_ICON_NONE);
                     game_clearAnswerMarksAndHighlights();
                     game_setQuestion(response.question.question.question);
                     for (int i = 0; i < NUM_ANSWERS; i++)
                         game_setAnswer(i, response.question.question.answers[i]);
-                    // TODO do something with timeout!
+                    char buffer[64];
+                    snprintf(buffer, 64, "Time limit: %d seconds!", response.question.question.timeout);
+                    game_setStatusText(buffer);
+                    game_setControlsEnabled(1);
                 } else if (ntohs(response.main.length) == 0) {
                     // Move to End Phase
                     debugPrint("The PhaseEnd has now started!");
@@ -143,8 +147,26 @@ void *listenerThread(void *arg) {
                     debugPrint("Received Question with nonsense length: %d", ntohs(response.main.length));
                 }
             } else if (equalLiteral(response.main, "QRE")) {
-                // TODO display results to user
                 debugPrint("Received QuestionResult: %d %d", response.questionResult.timedOut, response.questionResult.correct);
+                if (response.questionResult.timedOut != 0) {
+                    game_setStatusIcon(STATUS_ICON_TIMEOUT);
+                    game_setStatusText("Sorry, timed out!");
+                    for (int i = 0; i < NUM_ANSWERS; i++) {
+                        if (response.questionResult.correct & (1 << i)) {
+                            game_markAnswerCorrect(i);
+                        } else {
+                            game_markAnswerWrong(i);
+                        }
+
+                        if (((guiGetLastResult() & (1 << i))
+                                    && (!(response.questionResult.correct & (1 << i))))
+                                || ((!(guiGetLastResult() & (1 << i)))
+                                    && (response.questionResult.correct & (1 << i)))) {
+                            game_highlightMistake(i);
+                        }
+                    }
+                    game_setControlsEnabled(0);
+                }
             } else if (equalLiteral(response.main, "LST")) {
                 debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));
                 int count = ntohs(response.main.length) / 37;

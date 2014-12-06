@@ -24,12 +24,6 @@
 static int scoreFlag = 0;
 static pthread_mutex_t scoreMutex = PTHREAD_MUTEX_INITIALIZER;
 
-unsigned long scoreForTimeLeft(unsigned long timeLeft, unsigned long timeout) {
-    unsigned long score = (timeLeft * 1000UL) / timeout; // Auf 10er Stellen runden
-    score = ((score + 5UL) / 10UL) * 10UL;
-    return score;
-}
-
 static int indexCompare(const void *a1, const void *b1) {
     int a = *((int *)a1);
     int b = *((int *)b1);

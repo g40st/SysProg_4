@@ -15,6 +15,8 @@
 // Returns 1 on success, 0 on error
 int handleErrorWarningMessage(rfc response);
 
+unsigned char guiGetLastResult(void);
+
 void *guiThread(void *arg);
 
 #endif
