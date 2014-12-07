@@ -246,6 +246,7 @@ void *clientThread(void *arg) {
                                 }
                             }
                         }
+                        scoreMarkForUpdate();
                     }
                 } else {
                     errorPrint("Unexpected message in PhasePreparation: %c%c%c", response.main.type[0],
@@ -259,8 +260,8 @@ void *clientThread(void *arg) {
                     }
 
                     // Find and send first question
-                    debugPrint("Player %d requested first Question...", result);
                     int firstQuestion = rand() % getQuestionCount();
+                    debugPrint("Player %d requested first Question, sending %d...", result, firstQuestion);
                     userSetQuestion(result, firstQuestion, 1);
                     Question *q = getQuestion(firstQuestion);
                     userSetLastTimeout(result, (time(NULL) - startTime) + q->timeout);
@@ -298,14 +299,13 @@ void *clientThread(void *arg) {
                     if (response.questionAnswered.selection == getQuestion(qu)->correct) {
                         correct = 1;
                     }
-                    int diff = time(NULL) - startTime;
-                    diff -= userGetLastTimeout(result);
-                    if (diff > 0) {
+                    int diff = userGetLastTimeout(result);
+                    diff -= time(NULL) - startTime;
+                    if (diff < 0) {
                         timeout = 1;
                     }
                     if (correct && (!timeout)) {
-                        debugPrint("Score: %d %d", diff, userGetLastTimeout(result));
-                        userAddScore(result, diff, userGetLastTimeout(result));
+                        userAddScore(result, diff, getQuestion(qu)->timeout);
                         scoreMarkForUpdate();
                     }
                     debugPrint("Player %d sent an answer (c%d t%d)...", result, correct, timeout);
@@ -316,7 +316,7 @@ void *clientThread(void *arg) {
                     response.main.type[2] = 'E';
                     response.questionResult.timedOut = timeout;
                     response.questionResult.correct = getQuestion(qu)->correct;
-                    response.main.length = 2;
+                    response.main.length = htons(2);
                     if (send(userGetSocket(result), &response,
                                 RFC_QUESTION_RESULT_SIZE, 0) == -1) {
                         errnoPrint("ClientThread6 send");
@@ -329,6 +329,7 @@ void *clientThread(void *arg) {
                             qi = rand() % getQuestionCount();
                         }
                         debugPrint("Sending next question %d to Player %d", qi, result);
+                        userSetQuestion(result, qi, 1);
                         Question *q = getQuestion(qi);
                         userSetLastTimeout(result, (time(NULL) - startTime) + q->timeout);
                         for (int i = 0; i < QUESTION_SIZE; i++) {
@@ -349,6 +350,7 @@ void *clientThread(void *arg) {
                             errnoPrint("ClientThread7 send");
                         }
                     } else {
+                        debugPrint("Player %d answered all questions?!", result);
                         // TODO All questions answered, wait...?
                     }
                 } else {

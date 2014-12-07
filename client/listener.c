@@ -112,16 +112,6 @@ void *listenerThread(void *arg) {
                 requestNewQuestion();
                 preparation_hideWindow();
                 game_showWindow();
-
-                // Send QuestionRequest QRQ
-                response.main.type[0] = 'Q';
-                response.main.type[1] = 'R';
-                response.main.type[2] = 'Q';
-                response.main.length = htons(0);
-                if (send(socket, &response.main, RFC_BASE_SIZE, 0) == -1) {
-                    errnoPrint("send");
-                    return NULL;
-                }
             } else {
                 errorPrint("Unexpected response in PhasePreparation: %c%c%c", response.main.type[0],
                         response.main.type[1], response.main.type[2]);
@@ -165,18 +155,17 @@ void *listenerThread(void *arg) {
                             game_highlightMistake(i);
                         }
                     }
-                    game_setControlsEnabled(0);
                 }
             } else if (equalLiteral(response.main, "LST")) {
                 debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));
                 int count = ntohs(response.main.length) / 37;
                 for (int i = 0; i < count; i++) {
-                    game_setPlayerName(i, response.playerList.players[i].name);
-                    game_setPlayerScore(i, response.playerList.players[i].points);
+                    game_setPlayerName(i + 1, response.playerList.players[i].name);
+                    game_setPlayerScore(i + 1, ntohl(response.playerList.players[i].points));
                 }
                 for (int i = count; i < MAX_PLAYERS; i++) {
-                    game_setPlayerName(i, "");
-                    game_setPlayerScore(i, 0);
+                    game_setPlayerName(i + 1, "");
+                    game_setPlayerScore(i + 1, 0);
                 }
             } else {
                 errorPrint("Unexpected response in PhaseGame: %c%c%c", response.main.type[0],
@@ -194,12 +183,12 @@ void *listenerThread(void *arg) {
                 debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));
                 int count = ntohs(response.main.length) / 37;
                 for (int i = 0; i < count; i++) {
-                    game_setPlayerName(i, response.playerList.players[i].name);
-                    game_setPlayerScore(i, response.playerList.players[i].points);
+                    game_setPlayerName(i + 1, response.playerList.players[i].name);
+                    game_setPlayerScore(i + 1, ntohl(response.playerList.players[i].points));
                 }
                 for (int i = count; i < MAX_PLAYERS; i++) {
-                    game_setPlayerName(i, "");
-                    game_setPlayerScore(i, 0);
+                    game_setPlayerName(i + 1, "");
+                    game_setPlayerScore(i + 1, 0);
                 }
             } else {
                 errorPrint("Unexpected response in PhaseEnd: %c%c%c", response.main.type[0],

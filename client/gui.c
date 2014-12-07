@@ -132,16 +132,6 @@ void preparation_onStartClicked(const char *currentSelection) {
         preparation_hideWindow();
         game_showWindow();
         requestNewQuestion();
-
-        // Send QuestionRequest QRQ
-        response.main.type[0] = 'Q';
-        response.main.type[1] = 'R';
-        response.main.type[2] = 'Q';
-        response.main.length = htons(0);
-        if (send(guiSocket, &response.main, RFC_BASE_SIZE, 0) == -1) {
-            errnoPrint("send");
-            return;
-        }
     } else {
         debugPrint("Got preparation_onStartClicked in wrong phase!");
     }
@@ -163,6 +153,7 @@ void game_onSubmitClicked(unsigned char selectedAnswers) {
 
     if (getGamePhase() == PHASE_GAME) {
         debugPrint("game_onSubmitClicked: %u", (unsigned)selectedAnswers);
+        game_setControlsEnabled(0);
         rfc response;
         response.main.type[0] = 'Q';
         response.main.type[1] = 'A';

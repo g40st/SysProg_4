@@ -167,6 +167,7 @@ int userGetScore(int index) {
 static unsigned long scoreForTimeLeft(unsigned long timeLeft, unsigned long timeout) {
     unsigned long score = (timeLeft * 1000UL) / timeout;
     score = ((score + 5UL) / 10UL) * 10UL;
+    debugPrint("Added Score: %lu & %lu --> %lu", timeLeft, timeout, score);
     return score;
 }
 
