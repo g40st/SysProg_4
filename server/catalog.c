@@ -104,8 +104,10 @@ static int shm_fd = -1;
 static Question *shm_data = NULL;
 
 int loaderOpenSharedMemory(int size) {
+    debugPrint("Opening Loader: %d * %d", size, RFC_QUESTION_SHMEM_SIZE);
+
     shm_size = size * RFC_QUESTION_SHMEM_SIZE;
-    shm_fd = shm_open(SHMEM_NAME, O_RDONLY, (mode_t)0);
+    shm_fd = shm_open(SHMEM_NAME, O_RDONLY, 0400);
     if (shm_fd == -1) {
         errnoPrint("shm_open");
         return 0;

@@ -49,15 +49,17 @@ static void sendPlayerListToAll() {
     list.main.type[1] = 'S';
     list.main.type[2] = 'T';
     list.main.length = htons(37 * c);
+    int n = 0;
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (userGetPresent(indices[i])) {
             const char *name = userGetName(indices[i]);
             size_t len = strlen(name);
-            memcpy(list.players[indices[i]].name, name, len);
-            memset(list.players[indices[i]].name + len, 0, 32 - len);
-            list.players[indices[i]].points = htonl(userGetScore(indices[i]));
-            list.players[indices[i]].id = indices[i];
-            debugPrint("LST %d: %d %s %d", i, indices[i], name, userGetScore(indices[i]));
+            memcpy(list.players[n].name, name, len);
+            memset(list.players[n].name + len, 0, 32 - len);
+            list.players[n].points = htonl(userGetScore(indices[i]));
+            list.players[n].id = indices[i];
+            debugPrint("LST %d: %d %s %d", n, indices[i], name, userGetScore(indices[i]));
+            n++;
         }
     }
 

@@ -163,6 +163,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    int on = 1;
+    setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
     signal(SIGINT, intHandler);
     userSetMainSocket(listen_socket);
 

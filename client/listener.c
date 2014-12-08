@@ -111,6 +111,7 @@ void *listenerThread(void *arg) {
                 setGamePhase(PHASE_GAME);
                 preparation_hideWindow();
                 game_showWindow();
+                game_setControlsEnabled(0);
                 requestNewQuestion(0);
             } else {
                 errorPrint("Unexpected response in PhasePreparation: %c%c%c", response.main.type[0],
@@ -171,6 +172,7 @@ void *listenerThread(void *arg) {
                 for (int i = 0; i < count; i++) {
                     game_setPlayerName(i + 1, response.playerList.players[i].name);
                     game_setPlayerScore(i + 1, ntohl(response.playerList.players[i].points));
+                    debugPrint("LST %d: %s %d", i, response.playerList.players[i].name, ntohl(response.playerList.players[i].points));
                 }
                 for (int i = count; i < MAX_PLAYERS; i++) {
                     game_setPlayerName(i + 1, "");
