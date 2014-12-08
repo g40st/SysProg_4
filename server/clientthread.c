@@ -309,6 +309,11 @@ void *clientThread(void *arg) {
                                 presentPlayers++;
                             }
                         }
+
+                        // TODO countFinished presentPlayers will break
+                        // if users quit while the game is running!
+                        // Store data properly in user database...
+
                         if (countFinished >= presentPlayers) {
                             debugPrint("All players seem to be finished, sending GOV!");
                             response.main.type[0] = 'G';

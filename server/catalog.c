@@ -113,7 +113,7 @@ int loaderOpenSharedMemory(int size) {
         return 0;
     }
 
-    shm_data = mmap(NULL, size, PROT_READ, MAP_SHARED, shm_fd, 0);
+    shm_data = mmap(NULL, shm_size, PROT_READ, MAP_SHARED, shm_fd, 0);
     if (shm_data == MAP_FAILED) {
         errnoPrint("mmap");
         return 0;
