@@ -262,6 +262,27 @@ int userGetLastTimeout(int index) {
     return t;
 }
 
+int userGetRank(int index) {
+    int r = 0;
+    pthread_mutex_lock(&mutexUsers);
+    if ((index >= 0) && (index < MAX_PLAYERS)) {
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (i != index) {
+                if (users[i].present != 0) {
+                    if (users[i].score > users[index].score) {
+                        r++;
+                    }
+                }
+            }
+        }
+        r += 1;
+    } else {
+        debugPrint("Invalid userGetRank: %d", index);
+    }
+    pthread_mutex_unlock(&mutexUsers);
+    return r;
+}
+
 int waitForSockets(int timeout) {
     struct timespec ts;
     ts.tv_sec = 0;

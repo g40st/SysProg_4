@@ -10,7 +10,7 @@
 #ifndef FRAGEWECHSEL_H
 #define FRAGEWECHSEL_H
 
-void requestNewQuestion(void);
+void requestNewQuestion(int seconds);
 
 void *questionThread(void *arg);
 

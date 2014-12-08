@@ -131,7 +131,7 @@ void preparation_onStartClicked(const char *currentSelection) {
         setGamePhase(PHASE_GAME);
         preparation_hideWindow();
         game_showWindow();
-        requestNewQuestion();
+        requestNewQuestion(0);
     } else {
         debugPrint("Got preparation_onStartClicked in wrong phase!");
     }

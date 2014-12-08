@@ -11,18 +11,23 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "common/rfc.h"
 #include "common/util.h"
 #include "fragewechsel.h"
 
 static int questionFlag = 0;
+static time_t questionTime = 0;
 static pthread_mutex_t questionMutex = PTHREAD_MUTEX_INITIALIZER;
 
-void requestNewQuestion(void) {
-    debugPrint("Marking QuestionThread for update...");
+void requestNewQuestion(int seconds) {
+    debugPrint("Marking QuestionThread for update in %ds...", seconds);
     pthread_mutex_lock(&questionMutex);
-    questionFlag++;
+    if (questionFlag != 0)
+        debugPrint("!Warning!: double question request!");
+    questionFlag = 1;
+    questionTime = time(NULL) + seconds;
     pthread_mutex_unlock(&questionMutex);
 }
 
@@ -43,11 +48,14 @@ void *questionThread(void *arg) {
     while (1) {
         pthread_mutex_lock(&questionMutex);
         int qf = questionFlag;
-        if (qf > 0)
-            questionFlag = 0;
+        time_t qt = questionTime;
         pthread_mutex_unlock(&questionMutex);
 
-        if (qf > 0) {
+        if ((qf > 0) && (time(NULL) >= qt)) {
+            pthread_mutex_lock(&questionMutex);
+            questionFlag = 0;
+            questionTime = 0;
+            pthread_mutex_unlock(&questionMutex);
             sendQuestionRequest(socket);
         }
 

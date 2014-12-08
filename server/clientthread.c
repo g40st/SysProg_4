@@ -34,6 +34,7 @@ static char *categories[MAX_CATEGORIES];
 static int numCategories = 0;
 static int selectedCategory = -1;
 static pthread_mutex_t mutexCategories = PTHREAD_MUTEX_INITIALIZER;
+static int countFinished = 0;
 
 static time_t startTime = 0;
 
@@ -86,6 +87,7 @@ void *clientThread(void *arg) {
     char *catalogThatHasBeenChanged = NULL;
 
     startTime = time(NULL);
+    srand(startTime);
 
     while (getRunning()) {
         // Send BROWSE command to loader
@@ -247,6 +249,12 @@ void *clientThread(void *arg) {
                             }
                         }
                         scoreMarkForUpdate();
+
+                        // Clear old question answered marks
+                        for (int i = 0; i < MAX_QUESTIONS; i++) {
+                            userSetQuestion(result, i, 0);
+                        }
+                        countFinished = 0;
                     }
                 } else {
                     errorPrint("Unexpected message in PhasePreparation: %c%c%c", response.main.type[0],
@@ -254,33 +262,69 @@ void *clientThread(void *arg) {
                 }
             } else if (getGamePhase() == PHASE_GAME) {
                 if (equalLiteral(response.main, "QRQ")) {
-                    // Clear old question answered marks
-                    for (int i = 0; i < MAX_QUESTIONS; i++) {
-                        userSetQuestion(result, i, 0);
-                    }
-
-                    // Find and send first question
-                    int firstQuestion = rand() % getQuestionCount();
-                    debugPrint("Player %d requested first Question, sending %d...", result, firstQuestion);
-                    userSetQuestion(result, firstQuestion, 1);
-                    Question *q = getQuestion(firstQuestion);
-                    userSetLastTimeout(result, (time(NULL) - startTime) + q->timeout);
-                    for (int i = 0; i < QUESTION_SIZE; i++) {
-                        response.question.question.question[i] = q->question[i];
-                    }
-                    for (int i = 0; i < NUM_ANSWERS; i++) {
-                        for (int j = 0; j < ANSWER_SIZE; j++) {
-                            response.question.question.answers[i][j] = q->answers[i][j];
+                    if (userCountQuestionsAnswered(result) < getQuestionCount()) {
+                        // Find next question, send to client
+                        int qi = rand() % getQuestionCount();
+                        while (userGetQuestion(result, qi) != 0) {
+                            qi = rand() % getQuestionCount();
                         }
-                    }
-                    response.question.question.timeout = q->timeout;
-                    response.main.type[0] = 'Q';
-                    response.main.type[1] = 'U';
-                    response.main.type[2] = 'E';
-                    response.main.length = htons(RFC_QUESTION_SIZE);
-                    if (send(userGetSocket(result), &response,
-                                RFC_BASE_SIZE + RFC_QUESTION_SIZE, 0) == -1) {
-                        errnoPrint("ClientThread5 send");
+                        debugPrint("Sending question %d to Player %d", qi, result);
+                        userSetQuestion(result, qi, 1);
+                        Question *q = getQuestion(qi);
+                        userSetLastTimeout(result, (time(NULL) - startTime) + q->timeout);
+                        for (int i = 0; i < QUESTION_SIZE; i++) {
+                            response.question.question.question[i] = q->question[i];
+                        }
+                        for (int i = 0; i < NUM_ANSWERS; i++) {
+                            for (int j = 0; j < ANSWER_SIZE; j++) {
+                                response.question.question.answers[i][j] = q->answers[i][j];
+                            }
+                        }
+                        response.question.question.timeout = q->timeout;
+                        response.main.type[0] = 'Q';
+                        response.main.type[1] = 'U';
+                        response.main.type[2] = 'E';
+                        response.main.length = htons(RFC_QUESTION_SIZE);
+                        if (send(userGetSocket(result), &response,
+                                    RFC_BASE_SIZE + RFC_QUESTION_SIZE, 0) == -1) {
+                            errnoPrint("ClientThread5 send");
+                        }
+                    } else {
+                        debugPrint("Player %d answered all questions!", result);
+                        // Send empty QUE message
+                        response.main.type[0] = 'Q';
+                        response.main.type[1] = 'U';
+                        response.main.type[2] = 'E';
+                        response.main.length = htons(0);
+                        if (send(userGetSocket(result), &response,
+                                    RFC_BASE_SIZE, 0) == -1) {
+                            errnoPrint("ClientThread6 send");
+                        }
+                        countFinished++;
+
+                        // All players finished? Send GOV to all
+                        int presentPlayers = 0;
+                        for (int i = 0; i < MAX_PLAYERS; i++) {
+                            if (userGetPresent(i)) {
+                                presentPlayers++;
+                            }
+                        }
+                        if (countFinished >= presentPlayers) {
+                            debugPrint("All players seem to be finished, sending GOV!");
+                            response.main.type[0] = 'G';
+                            response.main.type[1] = 'O';
+                            response.main.type[2] = 'V';
+                            response.main.length = htons(1);
+                            for (int i = 0; i < MAX_PLAYERS; i++) {
+                                if (userGetPresent(i)) {
+                                    response.gameOver.rank = userGetRank(i);
+                                    if (send(userGetSocket(i), &response,
+                                                RFC_BASE_SIZE + 1, 0) == -1) {
+                                        errnoPrint("ClientThread7 send");
+                                    }
+                                }
+                            }
+                        }
                     }
                 } else if (equalLiteral(response.main, "QAN")) {
                     // Check answer
@@ -319,39 +363,7 @@ void *clientThread(void *arg) {
                     response.main.length = htons(2);
                     if (send(userGetSocket(result), &response,
                                 RFC_QUESTION_RESULT_SIZE, 0) == -1) {
-                        errnoPrint("ClientThread6 send");
-                    }
-
-                    if (userCountQuestionsAnswered(result) < getQuestionCount()) {
-                        // Find next question, send to client
-                        int qi = rand() % getQuestionCount();
-                        while (userGetQuestion(result, qi) != 0) {
-                            qi = rand() % getQuestionCount();
-                        }
-                        debugPrint("Sending next question %d to Player %d", qi, result);
-                        userSetQuestion(result, qi, 1);
-                        Question *q = getQuestion(qi);
-                        userSetLastTimeout(result, (time(NULL) - startTime) + q->timeout);
-                        for (int i = 0; i < QUESTION_SIZE; i++) {
-                            response.question.question.question[i] = q->question[i];
-                        }
-                        for (int i = 0; i < NUM_ANSWERS; i++) {
-                            for (int j = 0; j < ANSWER_SIZE; j++) {
-                                response.question.question.answers[i][j] = q->answers[i][j];
-                            }
-                        }
-                        response.question.question.timeout = q->timeout;
-                        response.main.type[0] = 'Q';
-                        response.main.type[1] = 'U';
-                        response.main.type[2] = 'E';
-                        response.main.length = htons(RFC_QUESTION_SIZE);
-                        if (send(userGetSocket(result), &response,
-                                    RFC_BASE_SIZE + RFC_QUESTION_SIZE, 0) == -1) {
-                            errnoPrint("ClientThread7 send");
-                        }
-                    } else {
-                        debugPrint("Player %d answered all questions?!", result);
-                        // TODO All questions answered, wait...?
+                        errnoPrint("ClientThread8 send");
                     }
                 } else {
                     errorPrint("Unexpected message in PhaseGame: %c%c%c", response.main.type[0],

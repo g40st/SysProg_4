@@ -38,6 +38,8 @@ void userSetQuestion(int index, int question, int q);
 int userGetQuestion(int index, int question);
 int userCountQuestionsAnswered(int index);
 
+int userGetRank(int index);
+
 void userSetLastTimeout(int index, int timeout);
 int userGetLastTimeout(int index);
 

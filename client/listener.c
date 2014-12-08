@@ -109,9 +109,9 @@ void *listenerThread(void *arg) {
                 buff[len] = '\0';
                 debugPrint("The PhaseGame has now started: \"%s\"", buff);
                 setGamePhase(PHASE_GAME);
-                requestNewQuestion();
                 preparation_hideWindow();
                 game_showWindow();
+                requestNewQuestion(0);
             } else {
                 errorPrint("Unexpected response in PhasePreparation: %c%c%c", response.main.type[0],
                         response.main.type[1], response.main.type[2]);
@@ -138,23 +138,32 @@ void *listenerThread(void *arg) {
                 }
             } else if (equalLiteral(response.main, "QRE")) {
                 debugPrint("Received QuestionResult: %d %d", response.questionResult.timedOut, response.questionResult.correct);
+                for (int i = 0; i < NUM_ANSWERS; i++) {
+                    if (response.questionResult.correct & (1 << i)) {
+                        game_markAnswerCorrect(i);
+                    } else {
+                        game_markAnswerWrong(i);
+                    }
+
+                    if (((guiGetLastResult() & (1 << i))
+                                && (!(response.questionResult.correct & (1 << i))))
+                            || ((!(guiGetLastResult() & (1 << i)))
+                                && (response.questionResult.correct & (1 << i)))) {
+                        game_highlightMistake(i);
+                    }
+
+                    if (guiGetLastResult() == response.questionResult.correct) {
+                        game_setStatusIcon(STATUS_ICON_CORRECT);
+                    } else {
+                        game_setStatusIcon(STATUS_ICON_WRONG);
+                    }
+                }
                 if (response.questionResult.timedOut != 0) {
                     game_setStatusIcon(STATUS_ICON_TIMEOUT);
                     game_setStatusText("Sorry, timed out!");
-                    for (int i = 0; i < NUM_ANSWERS; i++) {
-                        if (response.questionResult.correct & (1 << i)) {
-                            game_markAnswerCorrect(i);
-                        } else {
-                            game_markAnswerWrong(i);
-                        }
-
-                        if (((guiGetLastResult() & (1 << i))
-                                    && (!(response.questionResult.correct & (1 << i))))
-                                || ((!(guiGetLastResult() & (1 << i)))
-                                    && (response.questionResult.correct & (1 << i)))) {
-                            game_highlightMistake(i);
-                        }
-                    }
+                    requestNewQuestion(5);
+                } else {
+                    requestNewQuestion(3);
                 }
             } else if (equalLiteral(response.main, "LST")) {
                 debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));
