@@ -167,8 +167,14 @@ void *clientThread(void *arg) {
                     stopThreads();
                     return NULL;
                 } else {
-                    debugPrint("Player closed connection!");
-                    scoreMarkForUpdate();
+                    debugPrint("Player %d closed connection!", result);
+                    if (userCount() > 1) {
+                        scoreMarkForUpdate();
+                    } else {
+                        sendErrorMessage(userGetSocket(0), "Last other player closed connection!");
+                        stopThreads();
+                        return NULL;
+                    }
                 }
             } else if (getGamePhase() == PHASE_PREPARATION) {
                 if (equalLiteral(response.main, "CRQ")) {
