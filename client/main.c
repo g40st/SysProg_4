@@ -27,6 +27,12 @@
 #include "gui.h"
 #include "listener.h"
 
+static int clientID = -1;
+
+int getClientID(void) {
+    return clientID;
+}
+
 static void show_help() {
     printf("Available options:\n");
     printf("    -n --name       speficy a username (argument)\n");
@@ -168,7 +174,8 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        infoPrint("We've been assigned ID no. %d", response.loginResponseOK.clientID);
+        clientID = response.loginResponseOK.clientID;
+        infoPrint("We've been assigned ID no. %d", clientID);
 
         preparation_addPlayer(username);
         if (response.loginResponseOK.clientID == 0) {

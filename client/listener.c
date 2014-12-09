@@ -22,6 +22,8 @@
 #include "gui.h"
 #include "listener.h"
 
+int getClientID(void); // in main
+
 static int playerCount;
 static pthread_mutex_t playerCountMutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -173,6 +175,9 @@ void *listenerThread(void *arg) {
                     game_setPlayerName(i + 1, response.playerList.players[i].name);
                     game_setPlayerScore(i + 1, ntohl(response.playerList.players[i].points));
                     debugPrint("LST %d: %s %d", i, response.playerList.players[i].name, ntohl(response.playerList.players[i].points));
+                    if (response.playerList.players[i].id == getClientID()) {
+                        game_highlightPlayer(i + 1);
+                    }
                 }
                 for (int i = count; i < MAX_PLAYERS; i++) {
                     game_setPlayerName(i + 1, "");

@@ -261,7 +261,7 @@ void game_setPlayerName(int position, const char *name) {
     wxGetApp().createGame();
     if (((position - 1) >= 0) && ((position - 1) < MAX_PLAYERS)) {
         wxGetApp().game->players[(position - 1)].text->SetLabel(wxString(name));
-        wxGetApp().game->Layout();
+        wxGetApp().game->players[(position - 1)].text->SetForegroundColour(*wxBLACK);
     } else {
         errorPrint("gui2: Invalid game_setPlayerName: %d, %s", position, name);
     }
@@ -275,6 +275,7 @@ void game_setPlayerScore(int position, unsigned long score) {
         std::stringstream ss;
         ss << score;
         wxGetApp().game->players[(position - 1)].score->SetLabel(wxString(ss.str()));
+        wxGetApp().game->players[(position - 1)].score->SetForegroundColour(*wxBLACK);
         if (score > wxGetApp().game->maxScore) {
             wxGetApp().game->maxScore = score;
             for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -282,7 +283,6 @@ void game_setPlayerScore(int position, unsigned long score) {
             }
         }
         wxGetApp().game->players[(position - 1)].bar->SetValue(score);
-        wxGetApp().game->Layout();
     } else {
         errorPrint("gui2: Invalid game_setPlayerScore: %d, %lu", position, score);
     }
