@@ -189,6 +189,8 @@ void *listenerThread(void *arg) {
                 buffer[1023] = '\0';
                 snprintf(buffer, 1023, "Game Over! You ranked on place %d!", response.gameOver.rank);
                 guiShowMessageDialog(buffer, 0);
+                guiQuit();
+                stopThreads();
                 return NULL;
             } else if (equalLiteral(response.main, "LST")) {
                 debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));

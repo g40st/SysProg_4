@@ -14,8 +14,10 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 IMPLEMENT_APP_NO_MAIN(ClientApp);
 
 bool ClientApp::OnInit() {
+    pthread_mutex_lock(&mutex);
     preparation = NULL;
     game = NULL;
+    pthread_mutex_unlock(&mutex);
     return true;
 }
 

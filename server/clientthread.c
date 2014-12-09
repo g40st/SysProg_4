@@ -34,7 +34,6 @@ static char *categories[MAX_CATEGORIES];
 static int numCategories = 0;
 static int selectedCategory = -1;
 static pthread_mutex_t mutexCategories = PTHREAD_MUTEX_INITIALIZER;
-static int countFinished = 0;
 
 static time_t startTime = 0;
 
@@ -166,6 +165,7 @@ void *clientThread(void *arg) {
                             sendErrorMessage(userGetSocket(i), "Game master closed connection!");
                     }
                     stopThreads();
+                    return NULL;
                 } else {
                     debugPrint("Player closed connection!");
                     scoreMarkForUpdate();
@@ -249,12 +249,6 @@ void *clientThread(void *arg) {
                             }
                         }
                         scoreMarkForUpdate();
-
-                        // Clear old question answered marks
-                        for (int i = 0; i < MAX_QUESTIONS; i++) {
-                            userSetQuestion(result, i, 0);
-                        }
-                        countFinished = 0;
                     }
                 } else {
                     errorPrint("Unexpected message in PhasePreparation: %c%c%c", response.main.type[0],
@@ -300,21 +294,18 @@ void *clientThread(void *arg) {
                                     RFC_BASE_SIZE, 0) == -1) {
                             errnoPrint("ClientThread6 send");
                         }
-                        countFinished++;
+                        userSetLastTimeout(result, -1);
 
-                        // All players finished? Send GOV to all
-                        int presentPlayers = 0;
+                        int countFinished = 0;
                         for (int i = 0; i < MAX_PLAYERS; i++) {
                             if (userGetPresent(i)) {
-                                presentPlayers++;
+                                if (userGetLastTimeout(i) == -1) {
+                                    countFinished++;
+                                }
                             }
                         }
 
-                        // TODO countFinished presentPlayers will break
-                        // if users quit while the game is running!
-                        // Store data properly in user database...
-
-                        if (countFinished >= presentPlayers) {
+                        if (countFinished >= userCount()) {
                             debugPrint("All players seem to be finished, sending GOV!");
                             response.main.type[0] = 'G';
                             response.main.type[1] = 'O';
@@ -327,8 +318,14 @@ void *clientThread(void *arg) {
                                                 RFC_BASE_SIZE + 1, 0) == -1) {
                                         errnoPrint("ClientThread7 send");
                                     }
+
+                                    debugPrint("Player %d ranked on %d!", i, response.gameOver.rank);
                                 }
                             }
+
+                            debugPrint("Game is now over. Killing server...");
+                            stopThreads();
+                            return NULL;
                         }
                     }
                 } else if (equalLiteral(response.main, "QAN")) {

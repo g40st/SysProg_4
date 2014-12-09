@@ -4,6 +4,8 @@
  * Copyright 2014 Thomas Buck <xythobuz@xythobuz.de
  */
 
+#include <pthread.h>
+#include <sys/select.h>
 #include <sstream>
 
 #include "guiApp.h"
@@ -14,6 +16,8 @@
 #define WINDOW_DIVISOR 6
 
 #define IMAGE_SIZE 30
+
+static pthread_mutex_t mutexGame = PTHREAD_MUTEX_INITIALIZER;
 
 ScrolledTextPane::ScrolledTextPane(wxWindow* parent, wxWindowID id) : wxScrolledWindow(parent, id) {
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -150,16 +154,21 @@ void GameFrame::buttonPress(wxCommandEvent& event) {
 extern "C" {
 
 void game_showWindow(void) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     wxGetApp().game->Show(true);
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_setStatusText(const char *text) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     wxGetApp().game->statusText->SetLabel(wxString(text));
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_setStatusIcon(StatusIcon icon) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     if (icon == STATUS_ICON_CORRECT) {
         wxGetApp().game->statusIcon->SetBitmap(wxBitmap(*wxGetApp().game->imageOk));
@@ -170,69 +179,85 @@ void game_setStatusIcon(StatusIcon icon) {
     } else {
         wxGetApp().game->statusIcon->SetBitmap(wxBitmap(*wxGetApp().game->imageNone));
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_setQuestion(const char *text) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     wxGetApp().game->question->text->SetLabel(wxString(text));
     wxGetApp().game->question->text->Wrap(wxGetApp().game->questionBox->GetSize().GetWidth() - 80);
     wxGetApp().game->Layout();
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_setAnswer(int index, const char *text) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     if ((index >= 0) && (index < MAX_ANSWERS)) {
         wxGetApp().game->answers[index].check->SetLabel(wxString(text));
     } else {
         errorPrint("gui2: Invalid game_setAnswer: %d, %s", index, text);
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_markAnswerCorrect(int index) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     if ((index >= 0) && (index < MAX_ANSWERS)) {
         wxGetApp().game->answers[index].image->SetBitmap(wxBitmap(*wxGetApp().game->imageOk));
     } else {
         errorPrint("gui2: Invalid game_markAnswerCorrect: %d", index);
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_markAnswerWrong(int index) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     if ((index >= 0) && (index < MAX_ANSWERS)) {
         wxGetApp().game->answers[index].image->SetBitmap(wxBitmap(*wxGetApp().game->imageError));
     } else {
         errorPrint("gui2: Invalid game_markAnswerWrong: %d", index);
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_highlightMistake(int index) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     if ((index >= 0) && (index < MAX_ANSWERS)) {
         wxGetApp().game->answers[index].check->SetBackgroundColour(*wxRED);
     } else {
         errorPrint("gui2: Invalid game_highlightMistake: %d", index);
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_clearAnswerMarksAndHighlights(void) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     for (int i = 0; i < MAX_ANSWERS; i++) {
         wxGetApp().game->answers[i].check->SetBackgroundColour(*wxLIGHT_GREY);
         wxGetApp().game->answers[i].check->SetValue(false);
         wxGetApp().game->answers[i].image->SetBitmap(wxBitmap(*wxGetApp().game->imageNone));
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_setControlsEnabled(int enable) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     for (int i = 0; i < MAX_ANSWERS; i++) {
         wxGetApp().game->answers[i].check->Enable((enable != 0) ? true : false);
     }
     wxGetApp().game->send->Enable((enable != 0) ? true : false);
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_setPlayerName(int position, const char *name) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     if (((position - 1) >= 0) && ((position - 1) < MAX_PLAYERS)) {
         wxGetApp().game->players[(position - 1)].text->SetLabel(wxString(name));
@@ -240,9 +265,11 @@ void game_setPlayerName(int position, const char *name) {
     } else {
         errorPrint("gui2: Invalid game_setPlayerName: %d, %s", position, name);
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_setPlayerScore(int position, unsigned long score) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     if (((position - 1) >= 0) && ((position - 1) < MAX_PLAYERS)) {
         std::stringstream ss;
@@ -259,9 +286,11 @@ void game_setPlayerScore(int position, unsigned long score) {
     } else {
         errorPrint("gui2: Invalid game_setPlayerScore: %d, %lu", position, score);
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_highlightPlayer(int position) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     if (((position - 1) >= 0) && ((position - 1) < MAX_PLAYERS)) {
         wxGetApp().game->players[(position - 1)].text->SetForegroundColour(*wxRED);
@@ -269,15 +298,20 @@ void game_highlightPlayer(int position) {
     } else {
         errorPrint("gui2: Invalid game_highlightPlayer: %d", position);
     }
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_hideWindow(void) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
     wxGetApp().game->Show(false);
+    pthread_mutex_unlock(&mutexGame);
 }
 
 void game_reset(void) {
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().createGame();
+    pthread_mutex_unlock(&mutexGame);
 
     game_clearAnswerMarksAndHighlights();
     game_setControlsEnabled(0);
@@ -291,13 +325,17 @@ void game_reset(void) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         game_setPlayerName(i, "");
         game_setPlayerScore(i, 0);
+        pthread_mutex_lock(&mutexGame);
         wxGetApp().game->players[i].bar->SetRange(0);
         wxGetApp().game->players[i].bar->SetValue(0);
         wxGetApp().game->players[i].text->SetForegroundColour(*wxBLACK);
         wxGetApp().game->players[i].score->SetForegroundColour(*wxBLACK);
+        pthread_mutex_unlock(&mutexGame);
     }
 
+    pthread_mutex_lock(&mutexGame);
     wxGetApp().game->maxScore = 0;
+    pthread_mutex_unlock(&mutexGame);
 }
 
 }
