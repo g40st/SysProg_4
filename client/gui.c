@@ -128,11 +128,6 @@ void preparation_onStartClicked(const char *currentSelection) {
             errnoPrint("send");
             return;
         }
-        setGamePhase(PHASE_GAME);
-        preparation_hideWindow();
-        game_showWindow();
-        game_setControlsEnabled(0);
-        requestNewQuestion(0);
     } else {
         debugPrint("Got preparation_onStartClicked in wrong phase!");
     }

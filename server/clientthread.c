@@ -241,7 +241,7 @@ void *clientThread(void *arg) {
                         debugPrint("Got StartGame game master");
                         setGamePhase(PHASE_GAME);
                         for (int i = 0; i < MAX_PLAYERS; i++) {
-                            if ((i != result) && userGetPresent(i)) {
+                            if (userGetPresent(i)) {
                                 if (send(userGetSocket(i), &response,
                                             RFC_BASE_SIZE + ntohs(response.main.length), 0) == -1) {
                                     errnoPrint("ClientThread4 send");
