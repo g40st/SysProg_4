@@ -126,19 +126,23 @@ void *clientThread(void *arg) {
                 readLineLoader(buff, BUFFER_SIZE);
                 if (strncmp(buff, LOAD_ERROR_PREFIX, strlen(LOAD_ERROR_PREFIX)) == 0) {
                     errorPrint("Loader: %s", buff);
-                    // TODO handle error. Change GamePhase back? Simply exit?
+                    stopThreads();
+                    return NULL;
                 } else if (strncmp(buff, LOAD_SUCCESS_PREFIX, strlen(LOAD_SUCCESS_PREFIX)) == 0) {
                     int size = 0;
                     if (sscanf(buff, LOAD_SUCCESS_PREFIX "%d", &size) != 1) {
                         errorPrint("Could not parse loader answer: %s", buff);
-                        // TODO handle error. Change GamePhase back? Simply exit?
+                        stopThreads();
+                        return NULL;
                     }
                     if (!loaderOpenSharedMemory(size)) {
-                        // TODO handle error. Change GamePhase back? Simply exit?
+                        stopThreads();
+                        return NULL;
                     }
                 } else {
                     errorPrint("Unknown response from loader: \"%s\"", buff);
-                    // TODO handle error. Change GamePhase back? Simply exit?
+                    stopThreads();
+                    return NULL;
                 }
             }
             pthread_mutex_unlock(&mutexCategories);
@@ -147,16 +151,20 @@ void *clientThread(void *arg) {
         // Check all sockets for activity
         int result = waitForSockets(SOCKET_TIMEOUT);
         if (result == -2) {
-            debugPrint("Error waiting for socket activity...");
-            // TODO handle error?
+            errorPrint("Error waiting for socket activity...");
+            stopThreads();
+            return NULL;
         } else if (result > -1) {
             // Read received message
             int socket = userGetSocket(result);
             rfc response;
             int receive = receivePacket(socket, &response);
             if (receive == -1) {
-                // TODO handle error?
-            } else if (receive == 0) {
+                errorPrint("Error reading data from client %d...", result);
+                receive = 0;
+            }
+
+            if (receive == 0) {
                 userSetPresent(result, 0);
                 if (result == 0) {
                     debugPrint("Game master closed connection!");

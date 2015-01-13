@@ -48,7 +48,9 @@ void *listenerThread(void *arg) {
         // Receive message
         int receive = receivePacket(socket, &response);
         if (receive == -1) {
-            // TODO handle error case gracefully?
+            guiShowErrorDialog("Error reading data from Server!", 0);
+            guiQuit();
+            stopThreads();
             return NULL;
         } else if (receive == 0) {
             errorPrint("Remote host closed connection");
