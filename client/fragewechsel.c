@@ -25,9 +25,9 @@ void requestNewQuestion(int seconds) {
     debugPrint("Marking QuestionThread for update in %ds...", seconds);
     pthread_mutex_lock(&questionMutex);
     if (questionFlag != 0)
-        debugPrint("!Warning!: double question request!");
+        debugPrint("Warning: double question request!");
     questionFlag = 1;
-    questionTime = time(NULL) + seconds;
+    questionTime = time(NULL) + seconds; // Request after seconds seconds.
     pthread_mutex_unlock(&questionMutex);
 }
 
@@ -51,14 +51,19 @@ void *questionThread(void *arg) {
         time_t qt = questionTime;
         pthread_mutex_unlock(&questionMutex);
 
+        // If enough time passed
         if ((qf > 0) && (time(NULL) >= qt)) {
+            // Reset the flags
             pthread_mutex_lock(&questionMutex);
             questionFlag = 0;
             questionTime = 0;
             pthread_mutex_unlock(&questionMutex);
+
+            // Request a new question
             sendQuestionRequest(socket);
         }
 
+        // Small delay to keep CPU utilization to a minimum.
         loopsleep();
     }
     return NULL;

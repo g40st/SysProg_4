@@ -27,6 +27,7 @@
 #include "gui.h"
 #include "listener.h"
 
+// Storage for the own player ID
 static int clientID = -1;
 
 int getClientID(void) {
@@ -65,6 +66,7 @@ int main(int argc, char **argv) {
         { NULL, 0, NULL, 0 }
     };
 
+    // Actual parsing of command line options using getopt()
     char username[33];
     username[0] = username[31] = username[32] = '\0';
     int option_index = 0;
@@ -128,6 +130,8 @@ int main(int argc, char **argv) {
         errorPrint("socket: %s", strerror(errno));
         return 1;
     }
+
+    // Connect to the server.
     if (connect(client_socket, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr)) == -1) {
         errorPrint("connect: %s", strerror(errno));
         close(client_socket);
@@ -137,11 +141,13 @@ int main(int argc, char **argv) {
     infoPrint("Serveraddress: %s", inet_ntoa(serv_addr.sin_addr));
     infoPrint("Serverport: %i", ntohs(serv_addr.sin_port));
 
+    // Prepare the GUI
     debugPrint("Initializing UI...");
     guiInit(&argc, &argv);
     preparation_setMode(PREPARATION_MODE_BUSY);
     preparation_showWindow();
 
+    // Send the first message to the server, a login request.
     debugPrint("Sending LoginRequest...");
     struct rfcLoginRequest lrq;
     lrq.main.type[0] = 'L';
@@ -174,9 +180,11 @@ int main(int argc, char **argv) {
             return 1;
         }
 
+        // Successful login, store our ID
         clientID = response.loginResponseOK.clientID;
         infoPrint("We've been assigned ID no. %d", clientID);
 
+        // Give privileges only to the game master (ID == 0)
         preparation_addPlayer(username);
         if (response.loginResponseOK.clientID == 0) {
             preparation_setMode(PREPARATION_MODE_PRIVILEGED);
@@ -193,6 +201,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    // Request a catalog listing
     debugPrint("Sending CatalogRequest...");
     response.main.type[0] = 'C';
     response.main.type[1] = 'R';
@@ -204,19 +213,21 @@ int main(int argc, char **argv) {
     }
 
     debugPrint("Starting Threads...");
-    pthread_t threads[3];
+    pthread_t threads[2];
+
+    // Create the listener Thread
     if (pthread_create(&threads[0], NULL, listenerThread, &client_socket) != 0) {
         errnoPrint("pthread_create");
         return 1;
     }
-    if (pthread_create(&threads[0], NULL, guiThread, &client_socket) != 0) {
+
+    // Create the question change Thread
+    if (pthread_create(&threads[1], NULL, questionThread, &client_socket) != 0) {
         errnoPrint("pthread_create");
         return 1;
     }
-    if (pthread_create(&threads[0], NULL, questionThread, &client_socket) != 0) {
-        errnoPrint("pthread_create");
-        return 1;
-    }
+
+    guiSetSocket(client_socket);
 
     debugPrint("Entering UI main loop...");
     guiMain();

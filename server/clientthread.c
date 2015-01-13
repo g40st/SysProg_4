@@ -30,6 +30,7 @@
 #define PHASE_GAME 1
 #define PHASE_END 2
 
+// Storage for the different questionnaire names
 static char *categories[MAX_CATEGORIES];
 static int numCategories = 0;
 static int selectedCategory = -1;
@@ -37,6 +38,7 @@ static pthread_mutex_t mutexCategories = PTHREAD_MUTEX_INITIALIZER;
 
 static time_t startTime = 0;
 
+// Add a new category to the list
 void addCategory(const char *c) {
     pthread_mutex_lock(&mutexCategories);
     if (numCategories < (MAX_CATEGORIES - 1)) {
@@ -47,29 +49,7 @@ void addCategory(const char *c) {
     pthread_mutex_unlock(&mutexCategories);
 }
 
-int countCategory(void) {
-    pthread_mutex_lock(&mutexCategories);
-    int c = numCategories;
-    pthread_mutex_unlock(&mutexCategories);
-    return c;
-}
-
-const char *getCategory(int index) {
-    const char *r = NULL;
-    pthread_mutex_lock(&mutexCategories);
-    if ((index >= 0) && (index < numCategories))
-        r = categories[index];
-    pthread_mutex_unlock(&mutexCategories);
-    return r;
-}
-
-void selectCategory(int index) {
-    pthread_mutex_lock(&mutexCategories);
-    if ((index >= 0) && (index < numCategories))
-        selectedCategory = index;
-    pthread_mutex_unlock(&mutexCategories);
-}
-
+// Free all the allocated memory in the category list
 void cleanCategories(void) {
     pthread_mutex_lock(&mutexCategories);
     for (int i = 0; i < numCategories; i++)
@@ -85,16 +65,22 @@ void *clientThread(void *arg) {
     int catalogHasBeenChanged = 0;
     char *catalogThatHasBeenChanged = NULL;
 
+    // Seed the random number generator used to select questions
     startTime = time(NULL);
     srand(startTime);
 
+    // Client Threads main loop
     while (getRunning()) {
-        // Send BROWSE command to loader
+        /*
+         * Send the BROWSE command to the loader if the
+         * first user has just logged in and we did not send
+         * the BROWSE command yet.
+         */
         if ((!present) && userGetPresent(0)) {
             present = 1;
             sendLoaderCommand(BROWSE_CMD);
 
-            // Read responses from loader
+            // Read the responses from the loader
             char buff[BUFFER_SIZE];
             int run = 1;
             while (run) {
@@ -102,13 +88,18 @@ void *clientThread(void *arg) {
                 if (buff[0] == '\0') {
                     run = 0;
                 } else {
+                    // Add them to the category list
                     addCategory(buff);
                     debugPrint("Loader Category: \"%s\"", buff);
                 }
             }
         }
 
-        // Send LOAD command to loader
+        /*
+         * Send the LOAD command to the loader if we entered the
+         * main game phase, already sent BROWSE and did not yet
+         * send the LOAD command.
+         */
         if (present && (!loaded) && (getGamePhase() == PHASE_GAME)) {
             pthread_mutex_lock(&mutexCategories);
             if ((selectedCategory < 0) || (selectedCategory >= numCategories)) {
@@ -116,13 +107,16 @@ void *clientThread(void *arg) {
                 setGamePhase(PHASE_PREPARATION);
                 sendWarningMessage(userGetSocket(0), "Please select a category!");
             } else {
+                // Prepare the shared memory
                 shm_unlink(SHMEM_NAME);
                 loaded = 1;
+
+                // Send the actual LOAD command
                 char buff[BUFFER_SIZE];
                 snprintf(buff, BUFFER_SIZE, "%s%s", LOAD_CMD_PREFIX, categories[selectedCategory]);
                 sendLoaderCommand(buff);
 
-                // Read response from loader
+                // Read the response from the loader
                 readLineLoader(buff, BUFFER_SIZE);
                 if (strncmp(buff, LOAD_ERROR_PREFIX, strlen(LOAD_ERROR_PREFIX)) == 0) {
                     errorPrint("Loader: %s", buff);
@@ -135,6 +129,8 @@ void *clientThread(void *arg) {
                         stopThreads();
                         return NULL;
                     }
+
+                    // Success! Try to open the shared memory...
                     if (!loaderOpenSharedMemory(size)) {
                         stopThreads();
                         return NULL;
@@ -165,8 +161,14 @@ void *clientThread(void *arg) {
             }
 
             if (receive == 0) {
+                // The user has closed its connection!
                 userSetPresent(result, 0);
                 if (result == 0) {
+                    /*
+                     * When the game master closes it's connection, we
+                     * have to send an error message to all other remaining
+                     * clients and then kill ourselves.
+                     */
                     debugPrint("Game master closed connection!");
                     for (int i = 1; i < MAX_PLAYERS; i++) {
                         if (userGetPresent(i))
@@ -175,6 +177,10 @@ void *clientThread(void *arg) {
                     stopThreads();
                     return NULL;
                 } else {
+                    /*
+                     * If an ordinary player closes the connection, we only need
+                     * to end the game if it was the last player besides the game master.
+                     */
                     debugPrint("Player %d closed connection!", result);
                     if (userCount() > 1) {
                         scoreMarkForUpdate();
@@ -185,7 +191,15 @@ void *clientThread(void *arg) {
                     }
                 }
             } else if (getGamePhase() == PHASE_PREPARATION) {
+                /*
+                 * Check for messages we want to receive in the
+                 * game preparation phase.
+                 */
                 if (equalLiteral(response.main, "CRQ")) {
+                    /*
+                     * A client has requested a list of available questionnaires.
+                     * Prepare and send it to him.
+                     */
                     debugPrint("Got CatalogRequest from ID %d", result);
                     response.main.type[0] = 'C';
                     response.main.type[1] = 'R';
@@ -204,7 +218,12 @@ void *clientThread(void *arg) {
                     }
                     pthread_mutex_unlock(&mutexCategories);
 
-                    // Relay CCH message to new clients!
+                    /*
+                     * Here we need to relay CCH messages, because this is
+                     * usually the first message we receive from a new client.
+                     * So if we have a cached CCH message, and he did not get it,
+                     * send it to him here.
+                     */
                     if (catalogHasBeenChanged && (!userGetLastCCH(result))) {
                         debugPrint("Relaying CatalogChange: %s", catalogThatHasBeenChanged);
                         int len = strlen(catalogThatHasBeenChanged);
@@ -218,12 +237,17 @@ void *clientThread(void *arg) {
                         }
                     }
                 } else if (equalLiteral(response.main, "CCH")) {
+                    /*
+                     * A client has selected a new questionnaire. This can only
+                     * be done by the game master!
+                     */
                     debugPrint("Got CatalogChanged from ID %d", result);
                     pthread_mutex_lock(&mutexCategories);
                     char buff[ntohs(response.main.length) + 1];
                     buff[ntohs(response.main.length)] = '\0';
                     memcpy(buff, response.catalogChange.filename, ntohs(response.main.length));
                     for (int i = 0; i < numCategories; i++) {
+                        // Find which category was set and store this index
                         if (strcmp(categories[i], buff) == 0) {
                             selectedCategory = i;
                         }
@@ -231,14 +255,19 @@ void *clientThread(void *arg) {
                     pthread_mutex_unlock(&mutexCategories);
                     for (int i = 0; i < MAX_PLAYERS; i++) {
                         if ((i != result) && userGetPresent(i)) {
+                            // Send the CCH message to all other players
                             if (send(userGetSocket(i), &response,
                                         RFC_BASE_SIZE + ntohs(response.main.length), 0) == -1) {
                                 errnoPrint("ClientThread3 send");
                             }
                         }
+
+                        // Store the info that they got this message (for relaying)
                         if (userGetPresent(i))
                             userSetLastCCH(i, 1);
                     }
+
+                    // Store the name using dynamic memory for the CCH relaying
                     if (catalogThatHasBeenChanged != NULL)
                         free(catalogThatHasBeenChanged);
                     catalogThatHasBeenChanged = malloc((ntohs(response.main.length) + 1) * sizeof(char));
@@ -249,35 +278,53 @@ void *clientThread(void *arg) {
                         catalogHasBeenChanged = 1;
                     }
                 } else if (equalLiteral(response.main, "STG")) {
+                    // Start Game requests can only be executed by the game master!
                     if (result != 0) {
                         infoPrint("Received StartGame from unprivileged ID %d", result);
                     } else {
                         debugPrint("Got StartGame game master");
+
+                        // Set the new phase
                         setGamePhase(PHASE_GAME);
                         for (int i = 0; i < MAX_PLAYERS; i++) {
                             if (userGetPresent(i)) {
+                                // Relay the message to all other players
                                 if (send(userGetSocket(i), &response,
                                             RFC_BASE_SIZE + ntohs(response.main.length), 0) == -1) {
                                     errnoPrint("ClientThread4 send");
                                 }
                             }
                         }
+
+                        // Send the player list to everyone again
                         scoreMarkForUpdate();
                     }
                 } else {
                     errorPrint("Unexpected message in PhasePreparation: %c%c%c", response.main.type[0],
                             response.main.type[1], response.main.type[2]);
                 }
+
+            /*
+             * Check for messages that we want to receive in the main
+             * game phase...
+             */
             } else if (getGamePhase() == PHASE_GAME) {
                 if (equalLiteral(response.main, "QRQ")) {
+                    // A player has requested the next question
                     if (userCountQuestionsAnswered(result) < getQuestionCount()) {
-                        // Find next question, send to client
+                        // If he has not answered all questions
                         int qi = rand() % getQuestionCount();
+
+                        // Find a new question index he did not already answer
                         while (userGetQuestion(result, qi) != 0) {
                             qi = rand() % getQuestionCount();
                         }
                         debugPrint("Sending question %d to Player %d", qi, result);
+
+                        // Mark this question as sent
                         userSetQuestion(result, qi, 1);
+
+                        // Prepare the packet we want to send as response
                         Question *q = getQuestion(qi);
                         userSetLastTimeout(result, (time(NULL) - startTime) + q->timeout);
                         for (int i = 0; i < QUESTION_SIZE; i++) {
@@ -293,13 +340,16 @@ void *clientThread(void *arg) {
                         response.main.type[1] = 'U';
                         response.main.type[2] = 'E';
                         response.main.length = htons(RFC_QUESTION_SIZE);
+
+                        // Send the Question, its answers and the timeout.
                         if (send(userGetSocket(result), &response,
                                     RFC_BASE_SIZE + RFC_QUESTION_SIZE, 0) == -1) {
                             errnoPrint("ClientThread5 send");
                         }
                     } else {
+                        // This player has finished answering all his questions
                         debugPrint("Player %d answered all questions!", result);
-                        // Send empty QUE message
+                        // Send an empty QUE message
                         response.main.type[0] = 'Q';
                         response.main.type[1] = 'U';
                         response.main.type[2] = 'E';
@@ -310,6 +360,7 @@ void *clientThread(void *arg) {
                         }
                         userSetLastTimeout(result, -1);
 
+                        // Count the amount of finished players
                         int countFinished = 0;
                         for (int i = 0; i < MAX_PLAYERS; i++) {
                             if (userGetPresent(i)) {
@@ -320,6 +371,7 @@ void *clientThread(void *arg) {
                         }
 
                         if (countFinished >= userCount()) {
+                            // If everyone is finished, send a Game Over message
                             debugPrint("All players seem to be finished, sending GOV!");
                             response.main.type[0] = 'G';
                             response.main.type[1] = 'O';
@@ -327,6 +379,7 @@ void *clientThread(void *arg) {
                             response.main.length = htons(1);
                             for (int i = 0; i < MAX_PLAYERS; i++) {
                                 if (userGetPresent(i)) {
+                                    // Send each player his personal ranking
                                     response.gameOver.rank = userGetRank(i);
                                     if (send(userGetSocket(i), &response,
                                                 RFC_BASE_SIZE + 1, 0) == -1) {
@@ -337,14 +390,17 @@ void *clientThread(void *arg) {
                                 }
                             }
 
+                            // The game is finished
                             debugPrint("Game is now over. Killing server...");
                             stopThreads();
                             return NULL;
                         }
                     }
                 } else if (equalLiteral(response.main, "QAN")) {
-                    // Check answer
+                    // A player has sent his answer for a question
                     int qu = -1;
+
+                    // Find out which question he answered
                     for (int i = 0; i < getQuestionCount(); i++) {
                         if (userGetQuestion(result, i) == 1) {
                             qu = i;
@@ -355,6 +411,8 @@ void *clientThread(void *arg) {
                         debugPrint("Player %d sent answer without a question?!", result);
                         continue;
                     }
+
+                    // Check if the answer was correct and fast enough
                     int correct = 0, timeout = 0;
                     if (response.questionAnswered.selection == getQuestion(qu)->correct) {
                         correct = 1;
@@ -364,13 +422,21 @@ void *clientThread(void *arg) {
                     if (diff < 0) {
                         timeout = 1;
                     }
+
+                    // If it is correct and not timed out
                     if (correct && (!timeout)) {
+                        // Increase the users score
                         userAddScore(result, diff, getQuestion(qu)->timeout);
+
+                        // Send a new score list to everyone
                         scoreMarkForUpdate();
                     }
                     debugPrint("Player %d sent an answer (c%d t%d)...", result, correct, timeout);
-                    userSetQuestion(result, qu, 2); // Mark as scored
 
+                    // Mark the question as scored
+                    userSetQuestion(result, qu, 2);
+
+                    // Send the result to the player
                     response.main.type[0] = 'Q';
                     response.main.type[1] = 'R';
                     response.main.type[2] = 'E';
@@ -391,6 +457,7 @@ void *clientThread(void *arg) {
             }
         }
 
+        // Delay for a short amount of time to keep CPU utilization to a minimum.
         loopsleep();
     }
 

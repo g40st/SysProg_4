@@ -23,6 +23,7 @@
 
 static int guiSocket = -1;
 
+// Place to store the last bitmask of answers given
 static unsigned char lastResult = 0;
 static pthread_mutex_t guiMutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -33,6 +34,9 @@ unsigned char guiGetLastResult(void) {
     return r;
 }
 
+/*
+ * Properly handle any received error or warning messages.
+ */
 int handleErrorWarningMessage(rfc response) {
     if (equalLiteral(response.main, "ERR")) {
         int length = ntohs(response.main.length) - RFC_ERR_SIZE;
@@ -43,10 +47,12 @@ int handleErrorWarningMessage(rfc response) {
         s[length] = '\0';
         memcpy(s, response.errorWarning.message, length);
 
+        // Only print warning messages.
         if (response.errorWarning.subtype == 0) {
             infoPrint("Warning: %s", s);
             guiShowMessageDialog(s, 0);
             return 1;
+        // Print error messages and exit afterwards.
         } else if (response.errorWarning.subtype == 1) {
             errorPrint("Error: %s", s);
             guiShowErrorDialog(s, 1);
@@ -60,24 +66,13 @@ int handleErrorWarningMessage(rfc response) {
     return 0;
 }
 
-void *guiThread(void *arg) {
-    guiSocket = *((int *)arg);
-    while (getRunning()) {
-        GamePhase_t phase = getGamePhase();
-
-        if (phase == PHASE_PREPARATION) {
-
-        } else if (phase == PHASE_GAME) {
-
-        } else {
-
-        }
-
-        loopsleep();
-    }
-    return NULL;
+void guiSetSocket(int s) {
+    guiSocket = s;
 }
 
+/*
+ * Called by GUI when a new catalog has been selected.
+ */
 void preparation_onCatalogChanged(const char *newSelection) {
     if (guiSocket == -1) {
         errorPrint("preparation_onCatalogChanged: Wrong initialization order?!");
@@ -85,6 +80,7 @@ void preparation_onCatalogChanged(const char *newSelection) {
     }
 
     if (getGamePhase() == PHASE_PREPARATION) {
+        // Send the name of the newly selected catalog to the server.
         debugPrint("preparation_onCatalogChanged: %s", newSelection);
         rfc response;
         response.main.type[0] = 'C';
@@ -100,6 +96,9 @@ void preparation_onCatalogChanged(const char *newSelection) {
     }
 }
 
+/*
+ * Called by GUI when the Start button has been clicked.
+ */
 void preparation_onStartClicked(const char *currentSelection) {
     if (guiSocket == -1) {
         errorPrint("preparation_onStartClicked: Wrong initialization order?!");
@@ -107,16 +106,21 @@ void preparation_onStartClicked(const char *currentSelection) {
     }
 
     if (getGamePhase() == PHASE_PREPARATION) {
+        // Ensure a category has been selected
         if ((currentSelection == NULL) || (currentSelection[0] == '\0')) {
             debugPrint("Clicked start without selected category!");
             guiShowErrorDialog("Can't start game without selected category!", 0);
             return;
         }
+
+        // Ensure there are enough other players to start a game
         if (getPlayerCount() <= 1) {
             debugPrint("Clicked start without another player!");
             guiShowErrorDialog("Can't start game without another player!", 0);
             return;
         }
+
+        // Send the start game message to the server
         debugPrint("preparation_onStartClicked: %s", currentSelection);
         rfc response;
         response.main.type[0] = 'S';
@@ -133,12 +137,18 @@ void preparation_onStartClicked(const char *currentSelection) {
     }
 }
 
+/*
+ * Called by GUI when the preparation window has been closed.
+ */
 void preparation_onWindowClosed(void) {
     debugPrint("preparation_onWindowClosed");
     stopThreads();
     guiQuit();
 }
 
+/*
+ * Called by GUI when the Submit button has been clicked.
+ */
 void game_onSubmitClicked(unsigned char selectedAnswers) {
     if (guiSocket == -1) {
         errorPrint("game_onSubmitClicked: Wrong initialization order?!");
@@ -148,6 +158,10 @@ void game_onSubmitClicked(unsigned char selectedAnswers) {
     lastResult = selectedAnswers;
 
     if (getGamePhase() == PHASE_GAME) {
+        /*
+         * Disable the controls until we received the result.
+         * Then simply send the answers to the server.
+         */
         debugPrint("game_onSubmitClicked: %u", (unsigned)selectedAnswers);
         game_setControlsEnabled(0);
         rfc response;
@@ -164,6 +178,9 @@ void game_onSubmitClicked(unsigned char selectedAnswers) {
     }
 }
 
+/*
+ * Called by GUI when the Game window has been closed.
+ */
 void game_onWindowClosed(void) {
     debugPrint("game_onWindowClosed");
     stopThreads();

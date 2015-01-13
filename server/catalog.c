@@ -21,22 +21,28 @@
 #include "common/util.h"
 #include "catalog.h"
 
+/*
+ * Pipes used to communicate with the loader.
+ */
 static int stdinPipe[2] = { -1, -1 };
 static int stdoutPipe[2] = { -1, -1 };
 static FILE *readPipe = NULL;
 static FILE *writePipe = NULL;
 
 int createPipes(void) {
+    // Create the first pipe set
     if (pipe(stdinPipe) == -1) {
         errnoPrint("pipe in");
         return 0;
     }
 
+    // Create the second pipe set
     if (pipe(stdoutPipe) == -1) {
         errnoPrint("pipe out");
         return 0;
     }
 
+    // Get File Descriptors for both pipes (on our end)
     readPipe = fdopen(stdoutPipe[0], "r");
     if (readPipe == NULL) {
         errnoPrint("fdopen");
@@ -58,6 +64,8 @@ int forkLoader(void) {
         errnoPrint("fork");
         return 0;
     } else if (forkResult == 0) {
+        // Child process!
+        // Assign the pipes to stdin/stdout
         if (dup2(stdinPipe[0], STDIN_FILENO) == -1) {
             errnoPrint("dup2(stdinPipe[0], STDIN_FILENO)");
             return 0;
@@ -68,10 +76,13 @@ int forkLoader(void) {
         }
 
         if (debugEnabled())
+            // Run the loader with debug output enabled
             execl("bin/loader", "loader", "catalog", "-d", NULL);
         else
+            // Run the loader without debug output
             execl("bin/loader", "loader", "catalog", NULL);
 
+        // This point should never be reached!
         errnoPrint("execl");
         return 0;
     }
@@ -91,6 +102,7 @@ void readLineLoader(char *buff, int size) {
         return;
     }
 
+    // Read a single line from the loaders stdout
     if (fgets(buff, size - 1, readPipe) == NULL)
         errnoPrint("fgets");
 
@@ -106,6 +118,7 @@ static Question *shm_data = NULL;
 int loaderOpenSharedMemory(int size) {
     debugPrint("Opening Loader: %d * %d", size, RFC_QUESTION_SHMEM_SIZE);
 
+    // Open the shared memory
     shm_size = size * RFC_QUESTION_SHMEM_SIZE;
     shm_fd = shm_open(SHMEM_NAME, O_RDONLY, 0400);
     if (shm_fd == -1) {
@@ -113,6 +126,7 @@ int loaderOpenSharedMemory(int size) {
         return 0;
     }
 
+    // Map it into our virtual memory
     shm_data = mmap(NULL, shm_size, PROT_READ, MAP_SHARED, shm_fd, 0);
     if (shm_data == MAP_FAILED) {
         errnoPrint("mmap");
@@ -124,17 +138,20 @@ int loaderOpenSharedMemory(int size) {
 
 void loaderCloseSharedMemory(void) {
     if (shm_data != NULL) {
+        // Unmap the data
         if (munmap(shm_data, shm_size) == -1) {
             errnoPrint("munmap");
         }
         shm_data = NULL;
         shm_size = 0;
 
+        // And unlink the shared memory
         if (shm_unlink(SHMEM_NAME) == -1) {
             errnoPrint("shm_unlink");
         }
     }
 
+    // Close the file descriptor
     if (shm_fd != -1) {
         close(shm_fd);
         shm_fd = -1;
@@ -142,11 +159,14 @@ void loaderCloseSharedMemory(void) {
 }
 
 int getQuestionCount(void) {
+    // Byte count divided by question size
     return shm_size / RFC_QUESTION_SHMEM_SIZE;
 }
 
 Question *getQuestion(int index) {
+    // Check if the question actually exists
     if ((index >= 0) && (index < getQuestionCount())) {
+        // Return a pointer into the mapped shared memory region
         return shm_data + index;
     } else {
         debugPrint("Invalid getQuestion: %d", index);

@@ -18,6 +18,9 @@
 #include "clientthread.h"
 #include "user.h"
 
+/*
+ * Data structure for a single user in the database.
+ */
 typedef struct {
     int present;
     char name[33];
@@ -28,6 +31,9 @@ typedef struct {
     int lastTimeout;
 } user_t;
 
+/*
+ * The database itself, a place for the main listening socket, and a mutex.
+ */
 static user_t users[MAX_PLAYERS];
 static int mainSocket = -1;
 static pthread_mutex_t mutexUsers = PTHREAD_MUTEX_INITIALIZER;
@@ -53,6 +59,7 @@ int userCount(void) {
     int c = 0;
     pthread_mutex_lock(&mutexUsers);
     for (int i = 0; i < MAX_PLAYERS; i++) {
+        // Count all users with a present flag != 0
         if (users[i].present)
             c++;
     }
@@ -64,6 +71,7 @@ int userFirstFreeSlot(void) {
     int s = -1;
     pthread_mutex_lock(&mutexUsers);
     for (int i = 0; i < MAX_PLAYERS; i++) {
+        // Return the first slot whose present flag is zero
         if (!users[i].present) {
             s = i;
             break;
@@ -98,13 +106,23 @@ void userSetPresent(int index, int present) {
 
 int userGetPresent(int index) {
     int present = 0;
+
+    // Lock the mutex
     pthread_mutex_lock(&mutexUsers);
+
+    // Check if the given index is valid
     if ((index >= 0) && (index < MAX_PLAYERS)) {
+        // Actually get the flag
         present = users[index].present;
     } else {
+        // Print an error
         debugPrint("Invalid userGetPresent: %d", index);
     }
+
+    // Unlock the mutex again
     pthread_mutex_unlock(&mutexUsers);
+
+    // Return the read value
     return present;
 }
 
@@ -164,6 +182,9 @@ int userGetScore(int index) {
     return score;
 }
 
+/*
+ * This method was copied from the lecture Wiki (except the debug output)!
+ */
 static unsigned long scoreForTimeLeft(unsigned long timeLeft, unsigned long timeout) {
     unsigned long score = (timeLeft * 1000UL) / timeout;
     score = ((score + 5UL) / 10UL) * 10UL;
@@ -230,6 +251,8 @@ int userCountQuestionsAnswered(int index) {
     pthread_mutex_lock(&mutexUsers);
     if ((index >= 0) && (index < MAX_PLAYERS)) {
         for (int i = 0; i < MAX_QUESTIONS; i++) {
+            // Count every question flag larger than zero
+            // So we actually also add the current question
             if (users[index].question[i] > 0)
                 c++;
         }
@@ -263,31 +286,38 @@ int userGetLastTimeout(int index) {
 }
 
 int userGetRank(int index) {
+    // Return 0 on an error case
     int r = 0;
     pthread_mutex_lock(&mutexUsers);
     if ((index >= 0) && (index < MAX_PLAYERS)) {
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (i != index) {
                 if (users[i].present != 0) {
+                    // Increase the rank by one for every other
+                    // player that has more points than this one.
                     if (users[i].score > users[index].score) {
                         r++;
                     }
                 }
             }
         }
-        r += 1;
+        r += 1; // Actually start the calculation with rank 1
     } else {
         debugPrint("Invalid userGetRank: %d", index);
     }
     pthread_mutex_unlock(&mutexUsers);
+
+    // Return the rank, or 0 on error (invalid argument)
     return r;
 }
 
 int waitForSockets(int timeout) {
+    // Prepare the pselect() timeout data structure
     struct timespec ts;
     ts.tv_sec = 0;
     ts.tv_nsec = timeout * 1000000;
 
+    // Prepare the set of blocked interrupt signals
     sigset_t blockset;
     sigfillset(&blockset);
     sigdelset(&blockset, SIGINT);
@@ -301,6 +331,7 @@ int waitForSockets(int timeout) {
             if (users[i].socket > max)
                 max = users[i].socket;
 
+            // Fill the datastructure with all used user sockets.
             FD_SET(users[i].socket, &fds);
         }
     }
@@ -313,21 +344,25 @@ int waitForSockets(int timeout) {
     int retval = pselect(max + 1, &fds, NULL, NULL, &ts, &blockset);
     if (retval == -1) {
         if (errno == EINTR) {
-            // SIGINT was caught
+            // We were interrupted (probably by Ctrl + C)
             close(userGetMainSocket());
             cleanCategories();
             return -2;
         } else {
+            // An genuine error occured
             errnoPrint("select");
             return -2;
         }
     } else if (retval == 0) {
+        // Nothing happened (timeout)
         return -1;
     } else {
+        // Something happened!
         pthread_mutex_lock(&mutexUsers);
         int ret = -2;
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (users[i].present) {
+                // Find out which users socket had activity
                 if (FD_ISSET(users[i].socket, &fds)) {
                     ret = i;
                 }
@@ -337,6 +372,8 @@ int waitForSockets(int timeout) {
         if (ret < 0) {
             errorPrint("Could not find active socket?!");
         }
+
+        // Return the user slot that had activity
         return ret;
     }
 }

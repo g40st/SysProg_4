@@ -21,12 +21,22 @@
 #include "user.h"
 #include "score.h"
 
-static int scoreFlag = 0;
-static pthread_mutex_t scoreMutex = PTHREAD_MUTEX_INITIALIZER;
-
 static int indexCompare(const void *a1, const void *b1) {
+    /*
+     * Indirect comparison! The two arguments, a and b,
+     * are not actually the elements that need to be sorted.
+     * Instead, they are indices into the list of elements
+     * we want to sort (our user list, in this case).
+     */
+
+    // Extract the two (integer) arguments
     int a = *((int *)a1);
     int b = *((int *)b1);
+
+    /*
+     * Use them as indices into the user list
+     * and compare the users scores
+     */
     if (userGetScore(a) > userGetScore(b))
         return -1;
     if (userGetScore(a) < userGetScore(b))
@@ -35,15 +45,17 @@ static int indexCompare(const void *a1, const void *b1) {
 }
 
 static void sendPlayerListToAll() {
+    // We only send a list if there really are players
     int c = userCount();
     if (c <= 0)
         return;
 
-    // Sort list by score
+    // Sort a list of indices into the user list, by score
     int indices[MAX_PLAYERS];
     for (int i = 0; i < MAX_PLAYERS; i++) indices[i] = i;
     qsort(indices, MAX_PLAYERS, sizeof(int), indexCompare);
 
+    // Prepare the packet we need to send to all users
     struct rfcPlayerList list;
     list.main.type[0] = 'L';
     list.main.type[1] = 'S';
@@ -51,18 +63,26 @@ static void sendPlayerListToAll() {
     list.main.length = htons(37 * c);
     int n = 0;
     for (int i = 0; i < MAX_PLAYERS; i++) {
+        // Only put actually existing users into the list
         if (userGetPresent(indices[i])) {
+            // And access the user list only using our indices array
             const char *name = userGetName(indices[i]);
             size_t len = strlen(name);
+
+            // Copy the username into the packet
             memcpy(list.players[n].name, name, len);
             memset(list.players[n].name + len, 0, 32 - len);
+
+            // Copy score & ID of the user
             list.players[n].points = htonl(userGetScore(indices[i]));
             list.players[n].id = indices[i];
+
             debugPrint("LST %d: %d %s %d", n, indices[i], name, userGetScore(indices[i]));
             n++;
         }
     }
 
+    // Send the new list to all connected users
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (userGetPresent(i)) {
             if (send(userGetSocket(i), &list, RFC_LST_SIZE(c), 0) == -1) {
@@ -72,23 +92,39 @@ static void sendPlayerListToAll() {
     }
 }
 
+static int scoreFlag = 0;
+static pthread_mutex_t scoreMutex = PTHREAD_MUTEX_INITIALIZER;
+
 void scoreMarkForUpdate(void) {
+    // Lock the flag mutex
     pthread_mutex_lock(&scoreMutex);
+
+    // Set the flag to a non-zero value
     scoreFlag++;
+
+    // Unlock the flag mutex
     pthread_mutex_unlock(&scoreMutex);
 }
 
 void *scoreThread(void *arg) {
+    // Score agent main loop
     while (getRunning()) {
+        // Lock the flag mutex
         pthread_mutex_lock(&scoreMutex);
+
+        // Store the flag value somewhere safe and reset it
         int sf = scoreFlag;
         if (sf > 0)
             scoreFlag = 0;
+
+        // Unlock the flag mutex
         pthread_mutex_unlock(&scoreMutex);
 
+        // If the flag is actually set, send a new list
         if (sf > 0)
             sendPlayerListToAll();
 
+        // Small delay to keep CPU-utilization to a minimum
         loopsleep();
     }
 

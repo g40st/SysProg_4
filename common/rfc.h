@@ -20,6 +20,10 @@
 #pragma pack(push,1)
 
 #define RFC_BASE_SIZE 5
+/*
+ * Every packet starts with this preamble.
+ * It cointains the message ID and its length.
+ */
 struct rfcMain {
     char type[3];
     uint16_t length;
@@ -92,6 +96,11 @@ struct rfcQuestion {
     QuestionMessage question;
 };
 
+/*
+ * Big union containing all the possible messages.
+ * This way, this single datastructure can be used
+ * to comfortably send and receive every type of message.
+ */
 typedef union {
     struct rfcMain main;
 
@@ -117,14 +126,23 @@ typedef union {
 
 #pragma pack(pop)
 
-// Returns 1 if equal, 0 if not
+/*
+ * Helper method to compare the message types.
+ * Returns 1 if equal, 0 if not.
+ */
 int equalLiteral(struct rfcMain m, const char *s);
 
-// Returns 1 on success, 0 on error
+/*
+ * Helper function to send an error or warning message.
+ * Returns 1 on success, 0 on error.
+ */
 int sendErrorMessage(int socket, const char *message);
 int sendWarningMessage(int socket, const char *message);
 
-// Return 1 on success, 0 on connection close, -1 on error
+/*
+ * Helper method to receive a single packet.
+ * Returns 1 on success, 0 on connection close, -1 on error.
+ */
 int receivePacket(int socket, rfc *r);
 
 #endif

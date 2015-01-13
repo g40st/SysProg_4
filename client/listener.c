@@ -24,6 +24,10 @@
 
 int getClientID(void); // in main
 
+/*
+ * The player count is stored here so we can check if there are enough
+ * players to start the game (in gui.c).
+ */
 static int playerCount;
 static pthread_mutex_t playerCountMutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -44,8 +48,10 @@ void *listenerThread(void *arg) {
     int socket = *((int *)arg);
     rfc response;
     debugPrint("ListenerThread is starting its loop...");
+
+    // Listener Threads main loop.
     while (getRunning()) {
-        // Receive message
+        // Receive a message from the server
         int receive = receivePacket(socket, &response);
         if (receive == -1) {
             guiShowErrorDialog("Error reading data from Server!", 0);
@@ -64,9 +70,13 @@ void *listenerThread(void *arg) {
         if (handleErrorWarningMessage(response))
             continue;
 
-        // Check message and react accordingly
+        // Check the message and react accordingly
         if (getGamePhase() == PHASE_PREPARATION) {
             if (equalLiteral(response.main, "LST")) {
+                /*
+                 * We've got a new list of players. Clear the current
+                 * display and send them all to the preparation window.
+                 */
                 debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));
                 int count = ntohs(response.main.length) / 37;
                 preparation_clearPlayers();
@@ -78,7 +88,10 @@ void *listenerThread(void *arg) {
                 }
                 setPlayerCount(count);
             } else if (equalLiteral(response.main, "CCH")) {
-                // Mark selected catalog
+                /*
+                 * A new catalog has been selected, so we send the name
+                 * to the preparation window.
+                 */
                 int len = ntohs(response.main.length);
                 char buff[len + 1];
                 strncpy(buff, response.catalogChange.filename, len);
@@ -86,7 +99,10 @@ void *listenerThread(void *arg) {
                 debugPrint("Received CatalogChange: \"%s\"", buff);
                 preparation_selectCatalog(buff);
             } else if (equalLiteral(response.main, "CRE")) {
-                // Display specified catalogs
+                /*
+                 * A new list of available catalogs has been sent.
+                 * Display them all in the preparation window.
+                 */
                 int len = ntohs(response.main.length);
                 void *vp = &response.catalogResponse;
                 struct rfcCatalog *cat = (struct rfcCatalog *)vp;
@@ -106,13 +122,15 @@ void *listenerThread(void *arg) {
                     len = ntohs(cat->main.length);
                 }
             } else if (equalLiteral(response.main, "STG")) {
-                // Start Game Phase
+                // The Game Phase has now started.
                 int len = ntohs(response.main.length);
                 char buff[len + 1];
                 strncpy(buff, response.startGame.filename, len);
                 buff[len] = '\0';
                 debugPrint("The PhaseGame has now started: \"%s\"", buff);
                 setGamePhase(PHASE_GAME);
+
+                // Hide the old and show the new window.
                 preparation_hideWindow();
                 game_showWindow();
                 game_setControlsEnabled(0);
@@ -124,7 +142,10 @@ void *listenerThread(void *arg) {
         } else if (getGamePhase() == PHASE_GAME) {
             if (equalLiteral(response.main, "QUE")) {
                 if (ntohs(response.main.length) == 769) {
+                    // We have received a new question-answer set from the server.
                     debugPrint("Received new question-answer set... Timeout: %d", response.question.question.timeout);
+
+                    // Clear the game window and set the question/answer texts.
                     game_setStatusIcon(STATUS_ICON_NONE);
                     game_clearAnswerMarksAndHighlights();
                     game_setQuestion(response.question.question.question);
@@ -135,7 +156,7 @@ void *listenerThread(void *arg) {
                     game_setStatusText(buffer);
                     game_setControlsEnabled(1);
                 } else if (ntohs(response.main.length) == 0) {
-                    // Move to End Phase
+                    // We have answered all available questions. Move to the End Phase.
                     debugPrint("The PhaseEnd has now started!");
                     setGamePhase(PHASE_END);
                 } else {
@@ -144,6 +165,11 @@ void *listenerThread(void *arg) {
             } else if (equalLiteral(response.main, "QRE")) {
                 debugPrint("Received QuestionResult: %d %d", response.questionResult.timedOut, response.questionResult.correct);
                 for (int i = 0; i < NUM_ANSWERS; i++) {
+                    /*
+                     * We have received the result of answering the last question.
+                     * Mark the answers and mistakes, and request a new question
+                     * after the correct timeout for our situation.
+                     */
                     if (response.questionResult.correct & (1 << i)) {
                         game_markAnswerCorrect(i);
                     } else {
@@ -163,6 +189,8 @@ void *listenerThread(void *arg) {
                         game_setStatusIcon(STATUS_ICON_WRONG);
                     }
                 }
+
+                // Request next question
                 if (response.questionResult.timedOut != 0) {
                     game_setStatusIcon(STATUS_ICON_TIMEOUT);
                     game_setStatusText("Sorry, timed out!");
@@ -171,6 +199,10 @@ void *listenerThread(void *arg) {
                     requestNewQuestion(3);
                 }
             } else if (equalLiteral(response.main, "LST")) {
+                /*
+                 * A new list of player names and scores has been sent.
+                 * Update the display in the game window.
+                 */
                 debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));
                 int count = ntohs(response.main.length) / 37;
                 for (int i = 0; i < count; i++) {
@@ -191,6 +223,9 @@ void *listenerThread(void *arg) {
             }
         } else {
             if (equalLiteral(response.main, "GOV")) {
+                /*
+                 * The Game is Over. Display a message with our rank.
+                 */
                 debugPrint("Received GameOver message: %d", response.gameOver.rank);
                 char buffer[1024];
                 buffer[1023] = '\0';
@@ -199,6 +234,10 @@ void *listenerThread(void *arg) {
                 stopThreads();
                 return NULL;
             } else if (equalLiteral(response.main, "LST")) {
+                /*
+                 * We're finished but others are still playing. So we still
+                 * need to update the score list.
+                 */
                 debugPrint("ListenerThread got LST message (%d)", ntohs(response.main.length));
                 int count = ntohs(response.main.length) / 37;
                 for (int i = 0; i < count; i++) {

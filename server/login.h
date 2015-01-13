@@ -10,10 +10,14 @@
 #ifndef LOGIN_H
 #define LOGIN_H
 
-#include <pthread.h>
-
+/*
+ * Add a new socket into the login queue.
+ */
 void loginAddSocket(int sock);
 
+/*
+ * Actual login thread main entry point.
+ */
 void *loginThread(void *arg);
 
 #endif

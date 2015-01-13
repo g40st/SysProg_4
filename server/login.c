@@ -22,20 +22,28 @@
 #include "user.h"
 #include "login.h"
 
+// The socket login queue
 static int sockets[MAX_PLAYERS] = { -1, -1, -1, -1 };
 static int socketCount = 0;
 static pthread_mutex_t socketMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void loginAddSocket(int sock) {
+    // Lock the queue
     pthread_mutex_lock(&socketMutex);
+
+    // Check if there is still room in the queue (should never fill!)
     if (socketCount < MAX_PLAYERS) {
+        // Add the socket to the queue
         sockets[socketCount] = sock;
         socketCount++;
     }
+
+    // Unlock the queue
     pthread_mutex_unlock(&socketMutex);
 }
 
 static void loginHandleSocket(int socket) {
+    // Try to receive the first packet from the client
     rfc response;
     int receive = receivePacket(socket, &response);
     if (receive == -1) {
@@ -46,6 +54,7 @@ static void loginHandleSocket(int socket) {
         return;
     }
 
+    // Check if we received a login request
     if (equalLiteral(response.main, "LRQ")) {
         // Check RFC version
         if (response.loginRequest.version != RFC_VERSION_NUMBER) {
@@ -118,16 +127,28 @@ static void loginHandleSocket(int socket) {
 }
 
 void *loginThread(void *arg) {
+    // Login Thread main loop
     while (getRunning()) {
+        // Lock the queue
         pthread_mutex_lock(&socketMutex);
+
+        // If there are elements in the queue
         while (socketCount > 0) {
+            // Take the top element
             int sock = sockets[socketCount - 1];
+
+            // Remove it from the queue
             sockets[socketCount - 1] = -1;
             socketCount--;
+
+            // Handle the login procedure for this socket
             loginHandleSocket(sock);
         }
+
+        // Unlock the queue
         pthread_mutex_unlock(&socketMutex);
 
+        // Delay for a short time to keep CPU utilization to a minimum
         loopsleep();
     }
 

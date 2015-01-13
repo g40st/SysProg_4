@@ -17,7 +17,7 @@ int handleErrorWarningMessage(rfc response);
 
 unsigned char guiGetLastResult(void);
 
-void *guiThread(void *arg);
+void guiSetSocket(int s);
 
 #endif
 

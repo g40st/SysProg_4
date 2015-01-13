@@ -54,6 +54,7 @@ int sendWarningMessage(int socket, const char *message) {
 
 int receivePacket(int socket, rfc *r) {
     void *rec = r;
+    // Read the packet preamble, containing the length, first.
     int receive = recv(socket, rec, RFC_BASE_SIZE, 0);
     if (receive == -1) {
         errnoPrint("receive");
@@ -62,6 +63,7 @@ int receivePacket(int socket, rfc *r) {
         return 0;
     }
 
+    // Then, using this information, read the rest of the packet.
     int len = ntohs(r->main.length);
     if (len > 0) {
         receive = recv(socket, rec + RFC_BASE_SIZE, len, 0);

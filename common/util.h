@@ -28,12 +28,25 @@ typedef enum {
     PHASE_END
 } GamePhase_t;
 
+/*
+ * Get or Set the current game phase.
+ */
 void setGamePhase(GamePhase_t p);
 GamePhase_t getGamePhase(void);
 
+/*
+ * Get or Set the flag used as condition in
+ * all Thread main loops. Gives ability to
+ * properly kill all running threads.
+ */
 int getRunning(void);
 void stopThreads(void);
 
+/*
+ * Helper method to sleep a short amount of time.
+ * Used at the end of each Threads main loop to
+ * keep CPU utilization to a minimum.
+ */
 void loopsleep(void);
 
 /* Wir benutzen die __attribute__ Erweiterung von GCC zur Überprüfung
