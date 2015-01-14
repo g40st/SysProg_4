@@ -59,8 +59,25 @@ void cleanCategories(void) {
     pthread_mutex_unlock(&mutexCategories);
 }
 
+static void sendBrowse(void) {
+    sendLoaderCommand(BROWSE_CMD);
+
+    // Read the responses from the loader
+    char buff[BUFFER_SIZE];
+    int run = 1;
+    while (run) {
+        readLineLoader(buff, BUFFER_SIZE);
+        if (buff[0] == '\0') {
+            run = 0;
+        } else {
+            // Add them to the category list
+            addCategory(buff);
+            debugPrint("Loader Category: \"%s\"", buff);
+        }
+    }
+}
+
 void *clientThread(void *arg) {
-    int present = 0;
     int loaded = 0;
     int catalogHasBeenChanged = 0;
     char *catalogThatHasBeenChanged = NULL;
@@ -69,38 +86,17 @@ void *clientThread(void *arg) {
     startTime = time(NULL);
     srand(startTime);
 
+    // Send the BROWSE command to the loader
+    sendBrowse();
+
     // Client Threads main loop
     while (getRunning()) {
-        /*
-         * Send the BROWSE command to the loader if the
-         * first user has just logged in and we did not send
-         * the BROWSE command yet.
-         */
-        if ((!present) && userGetPresent(0)) {
-            present = 1;
-            sendLoaderCommand(BROWSE_CMD);
-
-            // Read the responses from the loader
-            char buff[BUFFER_SIZE];
-            int run = 1;
-            while (run) {
-                readLineLoader(buff, BUFFER_SIZE);
-                if (buff[0] == '\0') {
-                    run = 0;
-                } else {
-                    // Add them to the category list
-                    addCategory(buff);
-                    debugPrint("Loader Category: \"%s\"", buff);
-                }
-            }
-        }
-
         /*
          * Send the LOAD command to the loader if we entered the
          * main game phase, already sent BROWSE and did not yet
          * send the LOAD command.
          */
-        if (present && (!loaded) && (getGamePhase() == PHASE_GAME)) {
+        if ((!loaded) && (getGamePhase() == PHASE_GAME)) {
             pthread_mutex_lock(&mutexCategories);
             if ((selectedCategory < 0) || (selectedCategory >= numCategories)) {
                 errorPrint("Error: Trying to load while no category is selected!");
