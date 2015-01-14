@@ -47,13 +47,6 @@ void stopThreads(void) {
     pthread_mutex_unlock(&mutexRunning);
 }
 
-void loopsleep(void) {
-    struct timespec t;
-    t.tv_sec = 0;
-    t.tv_nsec = THREAD_TIMEOUT * 1000000;
-    nanosleep(&t, NULL);
-}
-
 static const char *prog_name = "<unknown>";	/**< Aufrufname des Programms (argv[0]) */
 static int debug_enabled = 0;			/**< Debug-Ausgaben eingeschaltet? */
 

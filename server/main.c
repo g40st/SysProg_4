@@ -8,10 +8,10 @@
  */
 
 #include "catalog.h"
-#include "login.h"
 #include "score.h"
 #include "user.h"
 #include "clientthread.h"
+#include "common/rfc.h"
 #include "common/util.h"
 
 #include <stdio.h>
@@ -80,6 +80,93 @@ static int singleton(const char *lockfile) {
         perror("fsync");
 
     return 0;
+}
+
+/*
+ * Helper function performing the login procedure.
+ */
+static void loginHandleSocket(int socket) {
+    // Try to receive the first packet from the client
+    rfc response;
+    int receive = receivePacket(socket, &response);
+    if (receive == -1) {
+        errnoPrint("receive");
+        return;
+    } else if (receive == 0) {
+        errorPrint("Remote host closed connection");
+        return;
+    }
+
+    // Check if we received a login request
+    if (equalLiteral(response.main, "LRQ")) {
+        // Check RFC version
+        if (response.loginRequest.version != RFC_VERSION_NUMBER) {
+            sendErrorMessage(socket, "Login Error: Wrong RFC version used");
+            infoPrint("Login attempt with wrong RFC version: %d", response.loginRequest.version);
+            return;
+        }
+
+        // Store username string
+        int length = ntohs(response.main.length) - 1;
+        char s[length + 1];
+        s[length] = '\0';
+        memcpy(s, response.loginRequest.name, length);
+
+        // Check Game Phase
+        if (getGamePhase() != PHASE_PREPARATION) {
+            sendErrorMessage(socket, "Login Error: Game has already started");
+            infoPrint("Login attempt while game has already started: \"%s\"", s);
+            return;
+        }
+
+        // Detect empty name string
+        if (length == 0) {
+            sendErrorMessage(socket, "Login Error: A username is required");
+            infoPrint("Login attempt without a name");
+            return;
+        }
+
+        // Detect duplicate names
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (userGetPresent(i)) {
+                if (strcmp(userGetName(i), s) == 0) {
+                    sendErrorMessage(socket, "Login error: Name already in use");
+                    infoPrint("Login attempt with duplicate name: \"%s\"", s);
+                    return;
+                }
+            }
+        }
+
+        // Detect too many players
+        int pos = userFirstFreeSlot();
+        if (pos == -1) {
+            sendErrorMessage(socket, "Login Error: Server is full");
+            infoPrint("Login attempt while server is full: \"%s\"", s);
+            return;
+        }
+
+        // Write new user data into "database"
+        userSetPresent(pos, 1);
+        userSetName(pos, s);
+        userSetSocket(pos, socket);
+        scoreMarkForUpdate();
+
+        // Send LOK message
+        response.main.type[0] = 'L';
+        response.main.type[1] = 'O';
+        response.main.type[2] = 'K';
+        response.main.length = htons(2);
+        response.loginResponseOK.version = RFC_VERSION_NUMBER;
+        response.loginResponseOK.clientID = (uint8_t)pos;
+        if (send(socket, &response, RFC_LOK_SIZE, 0) == -1) {
+            errnoPrint("send");
+            return;
+        }
+    } else {
+        errorPrint("Unexpected response: %c%c%c", response.main.type[0],
+                response.main.type[1], response.main.type[2]);
+        return;
+    }
 }
 
 // Helper method to list the available command line arguments
@@ -168,22 +255,16 @@ int main(int argc, char **argv) {
         return 1;
 
     debugPrint("Starting Threads...");
-    pthread_t threads[3];
-
-    // Start the login thread
-    if (pthread_create(&threads[0], NULL, loginThread, NULL) != 0) {
-        errnoPrint("pthread_create");
-        return 1;
-    }
+    pthread_t threads[2];
 
     // Start the score agent thread
-    if (pthread_create(&threads[1], NULL, scoreThread, NULL) != 0) {
+    if (pthread_create(&threads[0], NULL, scoreThread, NULL) != 0) {
         errnoPrint("pthread_create");
         return 1;
     }
 
     // Start the client thread
-    if (pthread_create(&threads[2], NULL, clientThread, NULL) != 0) {
+    if (pthread_create(&threads[1], NULL, clientThread, NULL) != 0) {
         errnoPrint("pthread_create");
         return 1;
     }
@@ -265,9 +346,8 @@ int main(int argc, char **argv) {
                 return 1;
             }
 
-            // And put the new clients socket into the login queue
-            debugPrint("Got a new connection! Sending to LoginThread...");
-            loginAddSocket(client_socket);
+            debugPrint("Got a new connection! Performing Login...");
+                loginHandleSocket(client_socket);
         }
     }
 

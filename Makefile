@@ -56,7 +56,6 @@ MRPROPERFILES = $(OUTPUT_TARGETS)
 
 SERVER_MODULES=server/catalog.o \
 	       server/clientthread.o \
-	       server/login.o \
 	       server/main.o \
 	       server/score.o \
 	       server/user.o \

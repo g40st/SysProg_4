@@ -19,8 +19,7 @@
 #define MAX_CHAR 1024
 #define BUFFER_SIZE MAX_CHAR
 
-#define THREAD_TIMEOUT 25
-#define SOCKET_TIMEOUT THREAD_TIMEOUT
+#define SOCKET_TIMEOUT 25
 
 typedef enum {
     PHASE_PREPARATION,
@@ -41,13 +40,6 @@ GamePhase_t getGamePhase(void);
  */
 int getRunning(void);
 void stopThreads(void);
-
-/*
- * Helper method to sleep a short amount of time.
- * Used at the end of each Threads main loop to
- * keep CPU utilization to a minimum.
- */
-void loopsleep(void);
 
 /* Wir benutzen die __attribute__ Erweiterung von GCC zur Überprüfung
  * der Argumente von debugPrint. Damit andere Compiler sich nicht beschweren,

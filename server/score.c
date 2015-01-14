@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <errno.h>
+#include <semaphore.h>
 
 #include "common/rfc.h"
 #include "common/util.h"
@@ -92,41 +93,26 @@ static void sendPlayerListToAll() {
     }
 }
 
-static int scoreFlag = 0;
-static pthread_mutex_t scoreMutex = PTHREAD_MUTEX_INITIALIZER;
+static sem_t scoreMutex;
 
 void scoreMarkForUpdate(void) {
-    // Lock the flag mutex
-    pthread_mutex_lock(&scoreMutex);
-
-    // Set the flag to a non-zero value
-    scoreFlag++;
-
-    // Unlock the flag mutex
-    pthread_mutex_unlock(&scoreMutex);
+    sem_post(&scoreMutex);
 }
 
 void *scoreThread(void *arg) {
+    // Prepare semaphore
+    if (sem_init(&scoreMutex, 0, 0) == -1) {
+        errnoPrint("sem_init");
+        return NULL;
+    }
+
     // Score agent main loop
     while (getRunning()) {
-        // Lock the flag mutex
-        pthread_mutex_lock(&scoreMutex);
-
-        // Store the flag value somewhere safe and reset it
-        int sf = scoreFlag;
-        if (sf > 0)
-            scoreFlag = 0;
-
-        // Unlock the flag mutex
-        pthread_mutex_unlock(&scoreMutex);
-
-        // If the flag is actually set, send a new list
-        if (sf > 0)
-            sendPlayerListToAll();
-
-        // Small delay to keep CPU-utilization to a minimum
-        loopsleep();
+        sem_wait(&scoreMutex);
+        sendPlayerListToAll();
     }
+
+    sem_destroy(&scoreMutex);
 
     return NULL;
 }

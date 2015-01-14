@@ -456,9 +456,6 @@ void *clientThread(void *arg) {
                         response.main.type[1], response.main.type[2]);
             }
         }
-
-        // Delay for a short amount of time to keep CPU utilization to a minimum.
-        loopsleep();
     }
 
     return NULL;

@@ -12,23 +12,19 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <time.h>
+#include <semaphore.h>
 
 #include "common/rfc.h"
 #include "common/util.h"
 #include "fragewechsel.h"
 
-static int questionFlag = 0;
+static sem_t questionMutex;
 static time_t questionTime = 0;
-static pthread_mutex_t questionMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void requestNewQuestion(int seconds) {
     debugPrint("Marking QuestionThread for update in %ds...", seconds);
-    pthread_mutex_lock(&questionMutex);
-    if (questionFlag != 0)
-        debugPrint("Warning: double question request!");
-    questionFlag = 1;
+    sem_post(&questionMutex);
     questionTime = time(NULL) + seconds; // Request after seconds seconds.
-    pthread_mutex_unlock(&questionMutex);
 }
 
 static void sendQuestionRequest(int socket) {
@@ -45,27 +41,27 @@ static void sendQuestionRequest(int socket) {
 
 void *questionThread(void *arg) {
     int socket = *((int *)arg);
+    if (sem_init(&questionMutex, 0, 0) == -1) {
+        errnoPrint("sem_init");
+        return NULL;
+    }
+
     while (1) {
-        pthread_mutex_lock(&questionMutex);
-        int qf = questionFlag;
-        time_t qt = questionTime;
-        pthread_mutex_unlock(&questionMutex);
+        sem_wait(&questionMutex);
 
         // If enough time passed
-        if ((qf > 0) && (time(NULL) >= qt)) {
-            // Reset the flags
-            pthread_mutex_lock(&questionMutex);
-            questionFlag = 0;
+        if ((time(NULL) >= questionTime)) {
+            // Reset the flag
             questionTime = 0;
-            pthread_mutex_unlock(&questionMutex);
 
             // Request a new question
             sendQuestionRequest(socket);
+        } else {
+            sem_post(&questionMutex);
         }
-
-        // Small delay to keep CPU utilization to a minimum.
-        loopsleep();
     }
+
+    sem_destroy(&questionMutex);
     return NULL;
 }
 
