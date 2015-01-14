@@ -82,6 +82,19 @@ void semaphorePost(semaphore_t s) {
 #endif
 }
 
+// Return 0 on timeout
+int semaphoreTimeout(semaphore_t s, int t) {
+#ifndef __APPLE__
+    struct timespec time;
+    time.tv_sec = 0;
+    time.tv_nsec = t * 1000000;
+    return sem_timedwait(s, &time) == 0;
+#else
+    dispatch_time_t time = dispatch_time(DISPATCH_TIME_NOW, t * 1000000);
+    return dispatch_semaphore_wait(s, time) == 0;
+#endif
+}
+
 static const char *prog_name = "<unknown>";	/**< Aufrufname des Programms (argv[0]) */
 static int debug_enabled = 0;			/**< Debug-Ausgaben eingeschaltet? */
 

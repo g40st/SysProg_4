@@ -53,6 +53,7 @@ semaphore_t semaphoreNew(int start);
 void semaphoreRelease(semaphore_t s);
 void semaphoreWait(semaphore_t s);
 void semaphorePost(semaphore_t s);
+int semaphoreTimeout(semaphore_t s, int t); // Returns 0 on timeout
 
 /* Wir benutzen die __attribute__ Erweiterung von GCC zur Überprüfung
  * der Argumente von debugPrint. Damit andere Compiler sich nicht beschweren,

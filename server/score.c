@@ -104,7 +104,9 @@ void *scoreThread(void *arg) {
 
     // Score agent main loop
     while (getRunning()) {
-        semaphoreWait(scoreMutex);
+        if (!semaphoreTimeout(scoreMutex, SOCKET_TIMEOUT))
+            continue;
+
         sendPlayerListToAll();
     }
 
