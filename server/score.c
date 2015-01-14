@@ -15,7 +15,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <errno.h>
-#include <semaphore.h>
 
 #include "common/rfc.h"
 #include "common/util.h"
@@ -93,27 +92,23 @@ static void sendPlayerListToAll() {
     }
 }
 
-static sem_t scoreMutex;
+static semaphore_t scoreMutex;
 
 void scoreMarkForUpdate(void) {
-    sem_post(&scoreMutex);
+    semaphorePost(scoreMutex);
 }
 
 void *scoreThread(void *arg) {
     // Prepare semaphore
-    if (sem_init(&scoreMutex, 0, 0) == -1) {
-        errnoPrint("sem_init");
-        return NULL;
-    }
+    scoreMutex = semaphoreNew(0);
 
     // Score agent main loop
     while (getRunning()) {
-        sem_wait(&scoreMutex);
+        semaphoreWait(scoreMutex);
         sendPlayerListToAll();
     }
 
-    sem_destroy(&scoreMutex);
-
+    semaphoreRelease(scoreMutex);
     return NULL;
 }
 

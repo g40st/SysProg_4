@@ -41,6 +41,19 @@ GamePhase_t getGamePhase(void);
 int getRunning(void);
 void stopThreads(void);
 
+#ifndef __APPLE__
+#include <semaphore.h>
+typedef sem_t* semaphore_t;
+#else
+#include <dispatch/dispatch.h>
+typedef dispatch_semaphore_t semaphore_t;
+#endif
+
+semaphore_t semaphoreNew(int start);
+void semaphoreRelease(semaphore_t s);
+void semaphoreWait(semaphore_t s);
+void semaphorePost(semaphore_t s);
+
 /* Wir benutzen die __attribute__ Erweiterung von GCC zur Überprüfung
  * der Argumente von debugPrint. Damit andere Compiler sich nicht beschweren,
  * definieren wir auf diesen __attribute__ als leeres Makro. */

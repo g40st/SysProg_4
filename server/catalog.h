@@ -18,6 +18,11 @@
 int createPipes(void);
 
 /*
+ * Closes any pipes left from the loader.
+ */
+void closePipes(void);
+
+/*
  * Fork and execute the loader in the child process.
  */
 int forkLoader(void);

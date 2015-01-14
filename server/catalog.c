@@ -28,6 +28,7 @@ static int stdinPipe[2] = { -1, -1 };
 static int stdoutPipe[2] = { -1, -1 };
 static FILE *readPipe = NULL;
 static FILE *writePipe = NULL;
+static int inited = 0;
 
 int createPipes(void) {
     // Create the first pipe set
@@ -41,6 +42,8 @@ int createPipes(void) {
         errnoPrint("pipe out");
         return 0;
     }
+
+    inited = 1;
 
     // Get File Descriptors for both pipes (on our end)
     readPipe = fdopen(stdoutPipe[0], "r");
@@ -56,6 +59,14 @@ int createPipes(void) {
     }
 
     return 1;
+}
+
+void closePipes(void) {
+    if (!inited)
+        return;
+
+    close(stdoutPipe[0]);
+    close(stdinPipe[1]);
 }
 
 int forkLoader(void) {
@@ -75,6 +86,11 @@ int forkLoader(void) {
             return 0;
         }
 
+        close(stdoutPipe[0]);
+        close(stdoutPipe[1]);
+        close(stdinPipe[0]);
+        close(stdinPipe[1]);
+
         if (debugEnabled())
             // Run the loader with debug output enabled
             execl("bin/loader", "loader", "catalog", "-d", NULL);
@@ -85,6 +101,9 @@ int forkLoader(void) {
         // This point should never be reached!
         errnoPrint("execl");
         return 0;
+    } else {
+        close(stdinPipe[0]);
+        close(stdoutPipe[1]);
     }
     return 1;
 }

@@ -212,6 +212,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    guiSetSocket(client_socket);
+
     debugPrint("Starting Threads...");
     pthread_t threads[2];
 
@@ -226,8 +228,6 @@ int main(int argc, char **argv) {
         errnoPrint("pthread_create");
         return 1;
     }
-
-    guiSetSocket(client_socket);
 
     debugPrint("Entering UI main loop...");
     guiMain();

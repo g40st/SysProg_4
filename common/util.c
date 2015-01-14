@@ -47,6 +47,39 @@ void stopThreads(void) {
     pthread_mutex_unlock(&mutexRunning);
 }
 
+semaphore_t semaphoreNew(int start) {
+#ifndef __APPLE__
+    semaphore_t s = (semaphore_t)malloc(sizeof(sem_t));
+    sem_init(s, 0, start);
+#else
+    return dispatch_semaphore_create(start);
+#endif
+}
+
+void semaphoreRelease(semaphore_t s) {
+#ifndef __APPLE__
+    sem_destroy(s);
+#else
+    dispatch_release(s);
+#endif
+}
+
+void semaphoreWait(semaphore_t s) {
+#ifndef __APPLE__
+    sem_wait(s);
+#else
+    dispatch_semaphore_wait(s, DISPATCH_TIME_FOREVER);
+#endif
+}
+
+void semaphorePost(semaphore_t s) {
+#ifndef __APPLE__
+    sem_post(s);
+#else
+    dispatch_semaphore_signal(s);
+#endif
+}
+
 static const char *prog_name = "<unknown>";	/**< Aufrufname des Programms (argv[0]) */
 static int debug_enabled = 0;			/**< Debug-Ausgaben eingeschaltet? */
 

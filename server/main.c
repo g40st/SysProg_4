@@ -291,6 +291,7 @@ int main(int argc, char **argv) {
     if (bind(listen_socket, (struct sockaddr*) &server, sizeof(struct sockaddr_in)) == -1) {
         errnoPrint("bind");
         close(listen_socket);
+        closePipes();
         return 1;
     }
 
@@ -310,6 +311,7 @@ int main(int argc, char **argv) {
         if (listen(listen_socket, MAX_QUERYS) == -1) {
             errnoPrint("listen");
             close(listen_socket);
+            closePipes();
             cleanCategories();
             return 1;
         }
@@ -322,12 +324,14 @@ int main(int argc, char **argv) {
             if (errno == EINTR) {
                 // We should exit because the user pressed Ctrl + C
                 close(listen_socket);
+                closePipes();
                 cleanCategories();
                 return 0;
             } else {
                 // pselect encountered an error!
                 errnoPrint("select");
                 close(listen_socket);
+                closePipes();
                 cleanCategories();
                 return 1;
             }
@@ -342,17 +346,19 @@ int main(int argc, char **argv) {
             if (client_socket == -1) {
                 errnoPrint("accept");
                 close(listen_socket);
+                closePipes();
                 cleanCategories();
                 return 1;
             }
 
             debugPrint("Got a new connection! Performing Login...");
-                loginHandleSocket(client_socket);
+            loginHandleSocket(client_socket);
         }
     }
 
     // Clean up behind ourselves
     close(listen_socket);
+    closePipes();
     cleanCategories();
 
     pthread_exit(NULL);

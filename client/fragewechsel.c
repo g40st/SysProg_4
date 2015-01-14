@@ -12,18 +12,17 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <time.h>
-#include <semaphore.h>
 
 #include "common/rfc.h"
 #include "common/util.h"
 #include "fragewechsel.h"
 
-static sem_t questionMutex;
+static semaphore_t questionMutex;
 static time_t questionTime = 0;
 
 void requestNewQuestion(int seconds) {
     debugPrint("Marking QuestionThread for update in %ds...", seconds);
-    sem_post(&questionMutex);
+    semaphorePost(questionMutex);
     questionTime = time(NULL) + seconds; // Request after seconds seconds.
 }
 
@@ -41,13 +40,10 @@ static void sendQuestionRequest(int socket) {
 
 void *questionThread(void *arg) {
     int socket = *((int *)arg);
-    if (sem_init(&questionMutex, 0, 0) == -1) {
-        errnoPrint("sem_init");
-        return NULL;
-    }
+    questionMutex = semaphoreNew(0);
 
     while (1) {
-        sem_wait(&questionMutex);
+        semaphoreWait(questionMutex);
 
         // If enough time passed
         if ((time(NULL) >= questionTime)) {
@@ -57,11 +53,11 @@ void *questionThread(void *arg) {
             // Request a new question
             sendQuestionRequest(socket);
         } else {
-            sem_post(&questionMutex);
+            semaphorePost(questionMutex);
         }
     }
 
-    sem_destroy(&questionMutex);
+    semaphoreRelease(questionMutex);
     return NULL;
 }
 
