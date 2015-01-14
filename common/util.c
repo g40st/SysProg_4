@@ -51,6 +51,7 @@ semaphore_t semaphoreNew(int start) {
 #ifndef __APPLE__
     semaphore_t s = (semaphore_t)malloc(sizeof(sem_t));
     sem_init(s, 0, start);
+    return s;
 #else
     return dispatch_semaphore_create(start);
 #endif
@@ -59,6 +60,7 @@ semaphore_t semaphoreNew(int start) {
 void semaphoreRelease(semaphore_t s) {
 #ifndef __APPLE__
     sem_destroy(s);
+    free(s);
 #else
     dispatch_release(s);
 #endif
