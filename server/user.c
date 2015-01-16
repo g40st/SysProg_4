@@ -49,7 +49,7 @@ void userInit(void) {
         users[i].cch = 0;
         for (int j = 0; j < MAX_QUESTIONS; j++)
             users[i].question[j] = 0;
-        users[i].lastTimeout = 0;
+        users[i].lastTimeout = -1;
     }
     mainSocket = -1;
     pthread_mutex_unlock(&mutexUsers);
@@ -285,6 +285,20 @@ int userGetLastTimeout(int index) {
     return t;
 }
 
+int userGetNextTimeout(void) {
+    int min = -1;
+    pthread_mutex_lock(&mutexUsers);
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if ((users[i].present != 0) && (users[i].lastTimeout > -1)) {
+            if (users[i].lastTimeout > min) {
+                min = users[i].lastTimeout;
+            }
+        }
+    }
+    pthread_mutex_unlock(&mutexUsers);
+    return min;
+}
+
 int userGetRank(int index) {
     // Return 0 on an error case
     int r = 0;
@@ -315,6 +329,12 @@ int waitForSockets(int timeout) {
     // Prepare the pselect() timeout data structure
     struct timespec ts;
     ts.tv_sec = 0;
+
+    while (timeout >= 1000) {
+        ts.tv_sec += 1;
+        timeout -= 1000;
+    }
+
     ts.tv_nsec = timeout * 1000000;
 
     // Prepare the set of blocked interrupt signals

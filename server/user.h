@@ -94,6 +94,12 @@ void userSetLastTimeout(int index, int timeout);
 int userGetLastTimeout(int index);
 
 /*
+ * Check all present users with a set timeout and return
+ * the smalles valid timeout value (or -1 if none are set).
+ */
+int userGetNextTimeout(void);
+
+/*
  * Helper function to wait for activity on all present user
  * sockets. Returns -1 on timeout, -2 on error, or else
  * the ID of the user whose socket has had activity.

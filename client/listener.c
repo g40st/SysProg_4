@@ -164,6 +164,7 @@ void *listenerThread(void *arg) {
                 }
             } else if (equalLiteral(response.main, "QRE")) {
                 debugPrint("Received QuestionResult: %d %d", response.questionResult.timedOut, response.questionResult.correct);
+                game_setControlsEnabled(0);
                 for (int i = 0; i < NUM_ANSWERS; i++) {
                     /*
                      * We have received the result of answering the last question.
@@ -176,28 +177,31 @@ void *listenerThread(void *arg) {
                         game_markAnswerWrong(i);
                     }
 
-                    if (((guiGetLastResult() & (1 << i))
-                                && (!(response.questionResult.correct & (1 << i))))
-                            || ((!(guiGetLastResult() & (1 << i)))
-                                && (response.questionResult.correct & (1 << i)))) {
-                        game_highlightMistake(i);
+                    if (response.questionResult.timedOut == 0) {
+                        if (((guiGetLastResult() & (1 << i))
+                                    && (!(response.questionResult.correct & (1 << i))))
+                                || ((!(guiGetLastResult() & (1 << i)))
+                                    && (response.questionResult.correct & (1 << i)))) {
+                            game_highlightMistake(i);
+                        }
                     }
+                }
 
+                if (response.questionResult.timedOut != 0) {
+                    game_setStatusIcon(STATUS_ICON_TIMEOUT);
+                    game_setStatusText("Sorry, timed out!");
+                } else {
                     if (guiGetLastResult() == response.questionResult.correct) {
                         game_setStatusIcon(STATUS_ICON_CORRECT);
+                        game_setStatusText("Your answer was correct!");
                     } else {
                         game_setStatusIcon(STATUS_ICON_WRONG);
+                        game_setStatusText("Sorry, that's the wrong answer!");
                     }
                 }
 
                 // Request next question
-                if (response.questionResult.timedOut != 0) {
-                    game_setStatusIcon(STATUS_ICON_TIMEOUT);
-                    game_setStatusText("Sorry, timed out!");
-                    requestNewQuestion(5);
-                } else {
-                    requestNewQuestion(3);
-                }
+                requestNewQuestion(3);
             } else if (equalLiteral(response.main, "LST")) {
                 /*
                  * A new list of player names and scores has been sent.

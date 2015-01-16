@@ -77,6 +77,64 @@ static void sendBrowse(void) {
     }
 }
 
+static void handleQuestionTimeout(void) {
+    // Check if there is a timed out question
+    int to = userGetNextTimeout();
+    if (to < 0)
+        return;
+
+    int ti = time(NULL) - startTime;
+    if (ti < to) {
+        return;
+    }
+
+    // Find out whose question timed out
+    int user = -1;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (userGetPresent(i)) {
+            if (userGetLastTimeout(i) == to) {
+                user = i;
+                break;
+            }
+        }
+    }
+
+    if (user == -1) {
+        debugPrint("Timeout but can't find out for which player?!");
+        return;
+    }
+
+    // Find out which question he answered
+    int qu = -1;
+    for (int i = 0; i < getQuestionCount(); i++) {
+        if (userGetQuestion(user, i) == 1) {
+            qu = i;
+            break;
+        }
+    }
+
+    if (qu == -1) {
+        debugPrint("Player %d timed out without a question?!", user);
+        return;
+    }
+
+    // Mark question as answered
+    userSetQuestion(user, qu, 2);
+    userSetLastTimeout(user, -1);
+
+    rfc response;
+    response.main.type[0] = 'Q';
+    response.main.type[1] = 'R';
+    response.main.type[2] = 'E';
+    response.questionResult.timedOut = 1;
+    response.questionResult.correct = getQuestion(qu)->correct;
+    response.main.length = htons(2);
+    if (send(userGetSocket(user), &response,
+                RFC_QUESTION_RESULT_SIZE, 0) == -1) {
+        errnoPrint("ClientThread8 send");
+    }
+}
+
 void *clientThread(void *arg) {
     int loaded = 0;
     int catalogHasBeenChanged = 0;
@@ -140,12 +198,29 @@ void *clientThread(void *arg) {
             pthread_mutex_unlock(&mutexCategories);
         }
 
+        int nextTimeout = userGetNextTimeout();
+        int socketTimeout = SOCKET_TIMEOUT; // Default timeout
+        if (nextTimeout > -1) {
+            if (nextTimeout < (time(NULL) - startTime)) {
+                // We have already _forgot_ to take care of a timed out question
+                handleQuestionTimeout();
+                continue;
+            }
+
+            // Let waitForSockets timeout when the next user question times out
+            socketTimeout = (nextTimeout - (time(NULL) - startTime)) * 1000;
+        }
+
         // Check all sockets for activity
-        int result = waitForSockets(SOCKET_TIMEOUT);
+        int result = waitForSockets(socketTimeout);
         if (result == -2) {
             errorPrint("Error waiting for socket activity...");
             stopThreads();
             return NULL;
+        } else if (result == -1) {
+            // Timeout, check for question timeouts
+            if (nextTimeout > -1)
+                handleQuestionTimeout();
         } else if (result > -1) {
             // Read received message
             int socket = userGetSocket(result);
