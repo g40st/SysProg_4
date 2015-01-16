@@ -178,7 +178,7 @@ void *clientThread(void *arg) {
                      * to end the game if it was the last player besides the game master.
                      */
                     debugPrint("Player %d closed connection!", result);
-                    if (userCount() > 1) {
+                    if ((userCount() > 1) || (getGamePhase() == PHASE_PREPARATION)) {
                         scoreMarkForUpdate();
                     } else {
                         sendErrorMessage(userGetSocket(0), "Last other player closed connection!");
