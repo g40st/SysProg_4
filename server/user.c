@@ -253,7 +253,7 @@ int userCountQuestionsAnswered(int index) {
         for (int i = 0; i < MAX_QUESTIONS; i++) {
             // Count every question flag larger than zero
             // So we actually also add the current question
-            if (users[index].question[i] > 0)
+            if (users[index].question[i] > 1)
                 c++;
         }
     } else {
@@ -286,11 +286,11 @@ int userGetLastTimeout(int index) {
 }
 
 int userGetNextTimeout(void) {
-    int min = -1;
+    int min = -1;;
     pthread_mutex_lock(&mutexUsers);
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if ((users[i].present != 0) && (users[i].lastTimeout > -1)) {
-            if (users[i].lastTimeout > min) {
+            if ((min == -1) || (users[i].lastTimeout < min)) {
                 min = users[i].lastTimeout;
             }
         }

@@ -77,9 +77,8 @@ static void sendBrowse(void) {
     }
 }
 
-static void handleQuestionTimeout(void) {
+static void handleQuestionTimeout(int to) {
     // Check if there is a timed out question
-    int to = userGetNextTimeout();
     if (to < 0)
         return;
 
@@ -118,6 +117,8 @@ static void handleQuestionTimeout(void) {
         return;
     }
 
+    debugPrint("Player %d timed out question %d!", user, qu);
+
     // Mark question as answered
     userSetQuestion(user, qu, 2);
     userSetLastTimeout(user, -1);
@@ -131,7 +132,7 @@ static void handleQuestionTimeout(void) {
     response.main.length = htons(2);
     if (send(userGetSocket(user), &response,
                 RFC_QUESTION_RESULT_SIZE, 0) == -1) {
-        errnoPrint("ClientThread8 send");
+        errnoPrint("handleQuestionTimeout send");
     }
 }
 
@@ -201,14 +202,15 @@ void *clientThread(void *arg) {
         int nextTimeout = userGetNextTimeout();
         int socketTimeout = SOCKET_TIMEOUT; // Default timeout
         if (nextTimeout > -1) {
-            if (nextTimeout < (time(NULL) - startTime)) {
-                // We have already _forgot_ to take care of a timed out question
-                handleQuestionTimeout();
-                continue;
-            }
-
             // Let waitForSockets timeout when the next user question times out
             socketTimeout = (nextTimeout - (time(NULL) - startTime)) * 1000;
+
+            if (socketTimeout <= 0) {
+                // We have already _forgot_ to take care of a timed out question
+                debugPrint("Missed question timeout?!");
+                handleQuestionTimeout(nextTimeout);
+                continue;
+            }
         }
 
         // Check all sockets for activity
@@ -219,8 +221,10 @@ void *clientThread(void *arg) {
             return NULL;
         } else if (result == -1) {
             // Timeout, check for question timeouts
-            if (nextTimeout > -1)
-                handleQuestionTimeout();
+            if (nextTimeout > -1) {
+                debugPrint("waitForSockets question timeout...");
+                handleQuestionTimeout(nextTimeout);
+            }
         } else if (result > -1) {
             // Read received message
             int socket = userGetSocket(result);
@@ -435,7 +439,7 @@ void *clientThread(void *arg) {
                         int countFinished = 0;
                         for (int i = 0; i < MAX_PLAYERS; i++) {
                             if (userGetPresent(i)) {
-                                if (userGetLastTimeout(i) == -1) {
+                                if (userCountQuestionsAnswered(i) >= getQuestionCount()) {
                                     countFinished++;
                                 }
                             }
@@ -506,6 +510,12 @@ void *clientThread(void *arg) {
 
                     // Mark the question as scored
                     userSetQuestion(result, qu, 2);
+                    userSetLastTimeout(result, -1);
+
+                    if (timeout) {
+                        debugPrint("Player %d trying to answer timed out question...", result);
+                        continue;
+                    }
 
                     // Send the result to the player
                     response.main.type[0] = 'Q';
