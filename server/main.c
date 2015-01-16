@@ -292,6 +292,7 @@ int main(int argc, char **argv) {
         errnoPrint("bind");
         close(listen_socket);
         closePipes();
+        loaderCloseSharedMemory();
         return 1;
     }
 
@@ -312,6 +313,7 @@ int main(int argc, char **argv) {
             errnoPrint("listen");
             close(listen_socket);
             closePipes();
+            loaderCloseSharedMemory();
             cleanCategories();
             return 1;
         }
@@ -325,6 +327,7 @@ int main(int argc, char **argv) {
                 // We should exit because the user pressed Ctrl + C
                 close(listen_socket);
                 closePipes();
+                loaderCloseSharedMemory();
                 cleanCategories();
                 return 0;
             } else {
@@ -332,6 +335,7 @@ int main(int argc, char **argv) {
                 errnoPrint("select");
                 close(listen_socket);
                 closePipes();
+                loaderCloseSharedMemory();
                 cleanCategories();
                 return 1;
             }
@@ -347,6 +351,7 @@ int main(int argc, char **argv) {
                 errnoPrint("accept");
                 close(listen_socket);
                 closePipes();
+                loaderCloseSharedMemory();
                 cleanCategories();
                 return 1;
             }
@@ -359,6 +364,7 @@ int main(int argc, char **argv) {
     // Clean up behind ourselves
     close(listen_socket);
     closePipes();
+    loaderCloseSharedMemory();
     cleanCategories();
 
     pthread_exit(NULL);
