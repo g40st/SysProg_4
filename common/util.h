@@ -21,6 +21,8 @@
 
 #define SOCKET_TIMEOUT 25
 
+int isOnlyDigits(const char* s);
+
 typedef enum {
     PHASE_PREPARATION,
     PHASE_GAME,

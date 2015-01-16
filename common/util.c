@@ -15,6 +15,16 @@
 #include <time.h>
 #include "util.h"
 
+int isOnlyDigits(const char* s) {
+    while(*s != '\0') {
+        if ((*s < '0') || (*s > '9')) {
+            return 0;
+        }
+        s++;
+    }
+    return 1;
+}
+
 static GamePhase_t gamePhase = PHASE_PREPARATION;
 static pthread_mutex_t mutexGamePhase = PTHREAD_MUTEX_INITIALIZER;
 

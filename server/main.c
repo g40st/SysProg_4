@@ -224,8 +224,14 @@ int main(int argc, char **argv) {
 
             // Set port to listen on
             case 'p':
-                if(optarg)
-                    server.sin_port = htons(atoi(optarg));
+                if(optarg) {
+                    if (isOnlyDigits(optarg)) {
+                        server.sin_port = htons(atoi(optarg));
+                    } else {
+                        errorPrint("Port has to be a decimal number!");
+                        exit(1);
+                    }
+                }
                 break;
 
             // Unknown option, show error & help message
@@ -233,6 +239,7 @@ int main(int argc, char **argv) {
             case '?':
                 errorPrint("Option not implemented yet -- %s (%c)", argv[optind-1], c);
                 show_help();
+                exit(1);
                 break;
 
             // All options have been parsed

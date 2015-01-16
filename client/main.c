@@ -79,7 +79,8 @@ int main(int argc, char **argv) {
         switch (c) {
             case 'h':
                 show_help();
-                return 0;
+                exit(1);
+                break;
 
             case 'v':
                 debugEnable();
@@ -91,8 +92,14 @@ int main(int argc, char **argv) {
                 break;
 
             case 'p':
-                if (optarg)
-                    serv_addr.sin_port = htons(atoi(optarg));
+                if (optarg) {
+                    if (isOnlyDigits(optarg)) {
+                        serv_addr.sin_port = htons(atoi(optarg));
+                    } else {
+                        errorPrint("Port has to be a decimal number!");
+                        exit(1);
+                    }
+                }
                 break;
 
             case 'n':
@@ -104,6 +111,7 @@ int main(int argc, char **argv) {
             default:
                 errorPrint("Option not implemented yet -- %s (%c)", argv[optind-1], c);
                 show_help();
+                exit(1);
                 break;
         }
     }
