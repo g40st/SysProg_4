@@ -22,8 +22,8 @@ static time_t questionTime = 0;
 
 void requestNewQuestion(int seconds) {
     debugPrint("Marking QuestionThread for update in %ds...", seconds);
-    semaphorePost(questionMutex);
     questionTime = time(NULL) + seconds; // Request after seconds seconds.
+    semaphorePost(questionMutex);
 }
 
 static void sendQuestionRequest(int socket) {
