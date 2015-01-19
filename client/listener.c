@@ -158,6 +158,7 @@ void *listenerThread(void *arg) {
                 } else if (ntohs(response.main.length) == 0) {
                     // We have answered all available questions. Move to the End Phase.
                     debugPrint("The PhaseEnd has now started!");
+                    game_setStatusText("Waiting for other players to finish...");
                     setGamePhase(PHASE_END);
                 } else {
                     debugPrint("Received Question with nonsense length: %d", ntohs(response.main.length));
