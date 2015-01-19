@@ -222,6 +222,17 @@ void *listenerThread(void *arg) {
                     game_setPlayerName(i + 1, "");
                     game_setPlayerScore(i + 1, 0);
                 }
+            } else if (equalLiteral(response.main, "GOV")) {
+                /*
+                 * The Game is Over. Display a message with our rank.
+                 */
+                debugPrint("Received GameOver message: %d", response.gameOver.rank);
+                char buffer[1024];
+                buffer[1023] = '\0';
+                snprintf(buffer, 1023, "Game Over! You ranked on place %d!", response.gameOver.rank);
+                guiShowMessageDialog(buffer, 1);
+                stopThreads();
+                return NULL;
             } else {
                 errorPrint("Unexpected response in PhaseGame: %c%c%c", response.main.type[0],
                         response.main.type[1], response.main.type[2]);
