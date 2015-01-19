@@ -78,7 +78,7 @@ void semaphoreRelease(semaphore_t s) {
 
 void semaphoreWait(semaphore_t s) {
 #ifndef __APPLE__
-    sem_wait(s);
+    while (sem_wait(s) != 0);
 #else
     dispatch_semaphore_wait(s, DISPATCH_TIME_FOREVER);
 #endif
