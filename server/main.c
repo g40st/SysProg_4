@@ -83,7 +83,17 @@ static int singleton(const char *lockfile) {
 }
 
 static pthread_t threads[1 + MAX_PLAYERS];
-static int runningThreads = 0;
+static int threadsFree[1 + MAX_PLAYERS];
+
+void threadWillReturn(int id) {
+    for (int i = 0; i < (1 + MAX_PLAYERS); i++) {
+        if (threadsFree[i] == id) {
+            threadsFree[i] = -1;
+            return;
+        }
+    }
+    debugPrint("Invalid threadWillReturn %d?", id);
+}
 
 /*
  * Helper function performing the login procedure.
@@ -155,7 +165,14 @@ static void loginHandleSocket(int socket) {
         scoreMarkForUpdate();
 
         // Start client thread for new user
-        if (pthread_create(&threads[runningThreads++], NULL, clientThread, (void*)pos) != 0) {
+        int thread = -1;
+        for (int i = 0; i < (1 + MAX_PLAYERS); i++) {
+            if (threadsFree[i] == -1) {
+                thread = i;
+            }
+        }
+        if (pthread_create(&threads[thread], NULL, clientThread, (void*)pos) != 0) {
+            threadsFree[thread] = pos;
             errnoPrint("pthread_create");
             return;
         }
@@ -188,6 +205,9 @@ static void show_help() {
 
 // Main program entry point
 int main(int argc, char **argv) {
+    for (int i = 0; i < (1 + MAX_PLAYERS); i++)
+        threadsFree[i] = -1;
+
     setProgName(argv[0]);
     debugDisable();
     infoPrint("Server Gruppe 01");
@@ -273,7 +293,8 @@ int main(int argc, char **argv) {
     debugPrint("Starting Threads...");
 
     // Start the score agent thread
-    if (pthread_create(&threads[runningThreads++], NULL, scoreThread, NULL) != 0) {
+    if (pthread_create(&threads[0], NULL, scoreThread, NULL) != 0) {
+        threadsFree[0] = -2;
         errnoPrint("pthread_create");
         return 1;
     }

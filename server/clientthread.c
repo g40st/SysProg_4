@@ -30,6 +30,8 @@
 #define PHASE_GAME 1
 #define PHASE_END 2
 
+void threadWillReturn(int id);
+
 // Storage for the different questionnaire names
 static char *categories[MAX_CATEGORIES];
 static int numCategories = 0;
@@ -212,6 +214,7 @@ void *clientThread(void *arg) {
         pthread_mutex_lock(&mutexCatalog);
         if ((!loaded) && (getGamePhase() == PHASE_GAME)) {
             if (sendLoad()) {
+                threadWillReturn(clientID);
                 return NULL;
             }
         }
@@ -236,6 +239,7 @@ void *clientThread(void *arg) {
         if (result == -1) {
             errorPrint("Error waiting for socket activity...");
             stopThreads();
+            threadWillReturn(clientID);
             return NULL;
         } else if (result == 0) {
             // Timeout, check for question timeouts
@@ -281,6 +285,7 @@ void *clientThread(void *arg) {
                         stopThreads();
                     }
                 }
+                threadWillReturn(clientID);
                 return NULL;
             } else if (getGamePhase() == PHASE_PREPARATION) {
                 /*
@@ -489,6 +494,7 @@ void *clientThread(void *arg) {
                             // The game is finished
                             debugPrint("Game is now over. Killing server...");
                             stopThreads();
+                            threadWillReturn(clientID);
                             return NULL;
                         }
                     }
@@ -560,6 +566,7 @@ void *clientThread(void *arg) {
         }
     }
 
+    threadWillReturn(clientID);
     return NULL;
 }
 
