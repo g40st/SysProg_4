@@ -10,6 +10,8 @@
 #ifndef CLIENTTHREAD_H
 #define CLIENTTHREAD_H
 
+void clientInit(void);
+
 /*
  * Free any remaining dynamic memory in the client thread.
  */

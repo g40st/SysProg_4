@@ -36,10 +36,15 @@ static int numCategories = 0;
 static int selectedCategory = -1;
 static pthread_mutex_t mutexCategories = PTHREAD_MUTEX_INITIALIZER;
 
+static int loaded = 0;
+static int catalogHasBeenChanged = 0;
+static char *catalogThatHasBeenChanged = NULL;
+static pthread_mutex_t mutexCatalog = PTHREAD_MUTEX_INITIALIZER;
+
 static time_t startTime = 0;
 
 // Add a new category to the list
-void addCategory(const char *c) {
+static void addCategory(const char *c) {
     pthread_mutex_lock(&mutexCategories);
     if (numCategories < (MAX_CATEGORIES - 1)) {
         categories[numCategories] = malloc(strlen(c) + 1);
@@ -75,6 +80,55 @@ static void sendBrowse(void) {
             debugPrint("Loader Category: \"%s\"", buff);
         }
     }
+}
+
+static int sendLoad() {
+    pthread_mutex_lock(&mutexCategories);
+    if ((selectedCategory < 0) || (selectedCategory >= numCategories)) {
+        errorPrint("Error: Trying to load while no category is selected!");
+        setGamePhase(PHASE_PREPARATION);
+        sendWarningMessage(userGetSocket(0), "Please select a category!");
+    } else {
+        // Prepare the shared memory
+        shm_unlink(SHMEM_NAME);
+        loaded = 1;
+
+        // Send the actual LOAD command
+        char buff[BUFFER_SIZE];
+        snprintf(buff, BUFFER_SIZE, "%s%s", LOAD_CMD_PREFIX, categories[selectedCategory]);
+        sendLoaderCommand(buff);
+
+        // Read the response from the loader
+        readLineLoader(buff, BUFFER_SIZE);
+        if (strncmp(buff, LOAD_ERROR_PREFIX, strlen(LOAD_ERROR_PREFIX)) == 0) {
+            errorPrint("Loader: %s", buff);
+            stopThreads();
+            pthread_mutex_unlock(&mutexCategories);
+            return 1;
+        } else if (strncmp(buff, LOAD_SUCCESS_PREFIX, strlen(LOAD_SUCCESS_PREFIX)) == 0) {
+            int size = 0;
+            if (sscanf(buff, LOAD_SUCCESS_PREFIX "%d", &size) != 1) {
+                errorPrint("Could not parse loader answer: %s", buff);
+                stopThreads();
+                pthread_mutex_unlock(&mutexCategories);
+                return 1;
+            }
+
+            // Success! Try to open the shared memory...
+            if (!loaderOpenSharedMemory(size)) {
+                stopThreads();
+                pthread_mutex_unlock(&mutexCategories);
+                return 1;
+            }
+        } else {
+            errorPrint("Unknown response from loader: \"%s\"", buff);
+            stopThreads();
+            pthread_mutex_unlock(&mutexCategories);
+            return 1;
+        }
+    }
+    pthread_mutex_unlock(&mutexCategories);
+    return 0;
 }
 
 static void handleQuestionTimeout(int to) {
@@ -136,17 +190,17 @@ static void handleQuestionTimeout(int to) {
     }
 }
 
-void *clientThread(void *arg) {
-    int loaded = 0;
-    int catalogHasBeenChanged = 0;
-    char *catalogThatHasBeenChanged = NULL;
-
+void clientInit(void) {
     // Seed the random number generator used to select questions
     startTime = time(NULL);
     srand(startTime);
 
     // Send the BROWSE command to the loader
     sendBrowse();
+}
+
+void *clientThread(void *arg) {
+    int clientID = (int)arg;
 
     // Client Threads main loop
     while (getRunning()) {
@@ -155,51 +209,15 @@ void *clientThread(void *arg) {
          * main game phase, already sent BROWSE and did not yet
          * send the LOAD command.
          */
+        pthread_mutex_lock(&mutexCatalog);
         if ((!loaded) && (getGamePhase() == PHASE_GAME)) {
-            pthread_mutex_lock(&mutexCategories);
-            if ((selectedCategory < 0) || (selectedCategory >= numCategories)) {
-                errorPrint("Error: Trying to load while no category is selected!");
-                setGamePhase(PHASE_PREPARATION);
-                sendWarningMessage(userGetSocket(0), "Please select a category!");
-            } else {
-                // Prepare the shared memory
-                shm_unlink(SHMEM_NAME);
-                loaded = 1;
-
-                // Send the actual LOAD command
-                char buff[BUFFER_SIZE];
-                snprintf(buff, BUFFER_SIZE, "%s%s", LOAD_CMD_PREFIX, categories[selectedCategory]);
-                sendLoaderCommand(buff);
-
-                // Read the response from the loader
-                readLineLoader(buff, BUFFER_SIZE);
-                if (strncmp(buff, LOAD_ERROR_PREFIX, strlen(LOAD_ERROR_PREFIX)) == 0) {
-                    errorPrint("Loader: %s", buff);
-                    stopThreads();
-                    return NULL;
-                } else if (strncmp(buff, LOAD_SUCCESS_PREFIX, strlen(LOAD_SUCCESS_PREFIX)) == 0) {
-                    int size = 0;
-                    if (sscanf(buff, LOAD_SUCCESS_PREFIX "%d", &size) != 1) {
-                        errorPrint("Could not parse loader answer: %s", buff);
-                        stopThreads();
-                        return NULL;
-                    }
-
-                    // Success! Try to open the shared memory...
-                    if (!loaderOpenSharedMemory(size)) {
-                        stopThreads();
-                        return NULL;
-                    }
-                } else {
-                    errorPrint("Unknown response from loader: \"%s\"", buff);
-                    stopThreads();
-                    return NULL;
-                }
+            if (sendLoad()) {
+                return NULL;
             }
-            pthread_mutex_unlock(&mutexCategories);
         }
+        pthread_mutex_unlock(&mutexCatalog);
 
-        int nextTimeout = userGetNextTimeout();
+        int nextTimeout = userGetLastTimeout(clientID);
         int socketTimeout = SOCKET_TIMEOUT; // Default timeout
         if (nextTimeout > -1) {
             // Let waitForSockets timeout when the next user question times out
@@ -213,32 +231,32 @@ void *clientThread(void *arg) {
             }
         }
 
-        // Check all sockets for activity
-        int result = waitForSockets(socketTimeout);
-        if (result == -2) {
+        // Check socket for activity
+        int result = waitForSocket(clientID, socketTimeout);
+        if (result == -1) {
             errorPrint("Error waiting for socket activity...");
             stopThreads();
             return NULL;
-        } else if (result == -1) {
+        } else if (result == 0) {
             // Timeout, check for question timeouts
             if (nextTimeout > -1) {
                 debugPrint("waitForSockets question timeout...");
                 handleQuestionTimeout(nextTimeout);
             }
-        } else if (result > -1) {
+        } else if (result > 0) {
             // Read received message
-            int socket = userGetSocket(result);
+            int socket = userGetSocket(clientID);
             rfc response;
             int receive = receivePacket(socket, &response);
             if (receive == -1) {
-                errorPrint("Error reading data from client %d...", result);
+                errorPrint("Error reading data from client %d...", clientID);
                 receive = 0;
             }
 
             if (receive == 0) {
                 // The user has closed its connection!
-                userSetPresent(result, 0);
-                if (result == 0) {
+                userSetPresent(clientID, 0);
+                if (clientID == 0) {
                     /*
                      * When the game master closes it's connection, we
                      * have to send an error message to all other remaining
@@ -250,21 +268,20 @@ void *clientThread(void *arg) {
                             sendErrorMessage(userGetSocket(i), "Game master closed connection!");
                     }
                     stopThreads();
-                    return NULL;
                 } else {
                     /*
                      * If an ordinary player closes the connection, we only need
                      * to end the game if it was the last player besides the game master.
                      */
-                    debugPrint("Player %d closed connection!", result);
+                    debugPrint("Player %d closed connection!", clientID);
                     if ((userCount() > 1) || (getGamePhase() == PHASE_PREPARATION)) {
                         scoreMarkForUpdate();
                     } else {
                         sendErrorMessage(userGetSocket(0), "Last other player closed connection!");
                         stopThreads();
-                        return NULL;
                     }
                 }
+                return NULL;
             } else if (getGamePhase() == PHASE_PREPARATION) {
                 /*
                  * Check for messages we want to receive in the
@@ -275,7 +292,7 @@ void *clientThread(void *arg) {
                      * A client has requested a list of available questionnaires.
                      * Prepare and send it to him.
                      */
-                    debugPrint("Got CatalogRequest from ID %d", result);
+                    debugPrint("Got CatalogRequest from ID %d", clientID);
                     response.main.type[0] = 'C';
                     response.main.type[1] = 'R';
                     response.main.type[2] = 'E';
@@ -299,7 +316,8 @@ void *clientThread(void *arg) {
                      * So if we have a cached CCH message, and he did not get it,
                      * send it to him here.
                      */
-                    if (catalogHasBeenChanged && (!userGetLastCCH(result))) {
+                    pthread_mutex_lock(&mutexCatalog);
+                    if (catalogHasBeenChanged && (!userGetLastCCH(clientID))) {
                         debugPrint("Relaying CatalogChange: %s", catalogThatHasBeenChanged);
                         int len = strlen(catalogThatHasBeenChanged);
                         response.main.type[0] = 'C';
@@ -311,12 +329,13 @@ void *clientThread(void *arg) {
                             errnoPrint("ClientThread2 send");
                         }
                     }
+                    pthread_mutex_unlock(&mutexCatalog);
                 } else if (equalLiteral(response.main, "CCH")) {
                     /*
                      * A client has selected a new questionnaire. This can only
                      * be done by the game master!
                      */
-                    debugPrint("Got CatalogChanged from ID %d", result);
+                    debugPrint("Got CatalogChanged from ID %d", clientID);
                     pthread_mutex_lock(&mutexCategories);
                     char buff[ntohs(response.main.length) + 1];
                     buff[ntohs(response.main.length)] = '\0';
@@ -329,7 +348,7 @@ void *clientThread(void *arg) {
                     }
                     pthread_mutex_unlock(&mutexCategories);
                     for (int i = 0; i < MAX_PLAYERS; i++) {
-                        if ((i != result) && userGetPresent(i)) {
+                        if ((i != clientID) && userGetPresent(i)) {
                             // Send the CCH message to all other players
                             if (send(userGetSocket(i), &response,
                                         RFC_BASE_SIZE + ntohs(response.main.length), 0) == -1) {
@@ -343,6 +362,7 @@ void *clientThread(void *arg) {
                     }
 
                     // Store the name using dynamic memory for the CCH relaying
+                    pthread_mutex_lock(&mutexCatalog);
                     if (catalogThatHasBeenChanged != NULL)
                         free(catalogThatHasBeenChanged);
                     catalogThatHasBeenChanged = malloc((ntohs(response.main.length) + 1) * sizeof(char));
@@ -352,10 +372,11 @@ void *clientThread(void *arg) {
                         memcpy(catalogThatHasBeenChanged, buff, ntohs(response.main.length) + 1);
                         catalogHasBeenChanged = 1;
                     }
+                    pthread_mutex_unlock(&mutexCatalog);
                 } else if (equalLiteral(response.main, "STG")) {
                     // Start Game requests can only be executed by the game master!
-                    if (result != 0) {
-                        infoPrint("Received StartGame from unprivileged ID %d", result);
+                    if (clientID != 0) {
+                        infoPrint("Received StartGame from unprivileged ID %d", clientID);
                     } else {
                         debugPrint("Got StartGame game master");
 
@@ -386,22 +407,22 @@ void *clientThread(void *arg) {
             } else if (getGamePhase() == PHASE_GAME) {
                 if (equalLiteral(response.main, "QRQ")) {
                     // A player has requested the next question
-                    if (userCountQuestionsAnswered(result) < getQuestionCount()) {
+                    if (userCountQuestionsAnswered(clientID) < getQuestionCount()) {
                         // If he has not answered all questions
                         int qi = rand() % getQuestionCount();
 
                         // Find a new question index he did not already answer
-                        while (userGetQuestion(result, qi) != 0) {
+                        while (userGetQuestion(clientID, qi) != 0) {
                             qi = rand() % getQuestionCount();
                         }
-                        debugPrint("Sending question %d to Player %d", qi, result);
+                        debugPrint("Sending question %d to Player %d", qi, clientID);
 
                         // Mark this question as sent
-                        userSetQuestion(result, qi, 1);
+                        userSetQuestion(clientID, qi, 1);
 
                         // Prepare the packet we want to send as response
                         Question *q = getQuestion(qi);
-                        userSetLastTimeout(result, (time(NULL) - startTime) + q->timeout);
+                        userSetLastTimeout(clientID, (time(NULL) - startTime) + q->timeout);
                         for (int i = 0; i < QUESTION_SIZE; i++) {
                             response.question.question.question[i] = q->question[i];
                         }
@@ -417,23 +438,23 @@ void *clientThread(void *arg) {
                         response.main.length = htons(RFC_QUESTION_SIZE);
 
                         // Send the Question, its answers and the timeout.
-                        if (send(userGetSocket(result), &response,
+                        if (send(userGetSocket(clientID), &response,
                                     RFC_BASE_SIZE + RFC_QUESTION_SIZE, 0) == -1) {
                             errnoPrint("ClientThread5 send");
                         }
                     } else {
                         // This player has finished answering all his questions
-                        debugPrint("Player %d answered all questions!", result);
+                        debugPrint("Player %d answered all questions!", clientID);
                         // Send an empty QUE message
                         response.main.type[0] = 'Q';
                         response.main.type[1] = 'U';
                         response.main.type[2] = 'E';
                         response.main.length = htons(0);
-                        if (send(userGetSocket(result), &response,
+                        if (send(userGetSocket(clientID), &response,
                                     RFC_BASE_SIZE, 0) == -1) {
                             errnoPrint("ClientThread6 send");
                         }
-                        userSetLastTimeout(result, -1);
+                        userSetLastTimeout(clientID, -1);
 
                         // Count the amount of finished players
                         int countFinished = 0;
@@ -477,13 +498,13 @@ void *clientThread(void *arg) {
 
                     // Find out which question he answered
                     for (int i = 0; i < getQuestionCount(); i++) {
-                        if (userGetQuestion(result, i) == 1) {
+                        if (userGetQuestion(clientID, i) == 1) {
                             qu = i;
                             break;
                         }
                     }
                     if (qu == -1) {
-                        debugPrint("Player %d sent answer without a question?!", result);
+                        debugPrint("Player %d sent answer without a question?!", clientID);
                         continue;
                     }
 
@@ -492,7 +513,7 @@ void *clientThread(void *arg) {
                     if (response.questionAnswered.selection == getQuestion(qu)->correct) {
                         correct = 1;
                     }
-                    int diff = userGetLastTimeout(result);
+                    int diff = userGetLastTimeout(clientID);
                     diff -= time(NULL) - startTime;
                     if (diff < 0) {
                         timeout = 1;
@@ -501,19 +522,19 @@ void *clientThread(void *arg) {
                     // If it is correct and not timed out
                     if (correct && (!timeout)) {
                         // Increase the users score
-                        userAddScore(result, diff, getQuestion(qu)->timeout);
+                        userAddScore(clientID, diff, getQuestion(qu)->timeout);
 
                         // Send a new score list to everyone
                         scoreMarkForUpdate();
                     }
-                    debugPrint("Player %d sent an answer (c%d t%d)...", result, correct, timeout);
+                    debugPrint("Player %d sent an answer (c%d t%d)...", clientID, correct, timeout);
 
                     // Mark the question as scored
-                    userSetQuestion(result, qu, 2);
-                    userSetLastTimeout(result, -1);
+                    userSetQuestion(clientID, qu, 2);
+                    userSetLastTimeout(clientID, -1);
 
                     if (timeout) {
-                        debugPrint("Player %d trying to answer timed out question...", result);
+                        debugPrint("Player %d trying to answer timed out question...", clientID);
                         continue;
                     }
 
@@ -524,7 +545,7 @@ void *clientThread(void *arg) {
                     response.questionResult.timedOut = timeout;
                     response.questionResult.correct = getQuestion(qu)->correct;
                     response.main.length = htons(2);
-                    if (send(userGetSocket(result), &response,
+                    if (send(userGetSocket(clientID), &response,
                                 RFC_QUESTION_RESULT_SIZE, 0) == -1) {
                         errnoPrint("ClientThread8 send");
                     }

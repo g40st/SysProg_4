@@ -285,20 +285,6 @@ int userGetLastTimeout(int index) {
     return t;
 }
 
-int userGetNextTimeout(void) {
-    int min = -1;;
-    pthread_mutex_lock(&mutexUsers);
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        if ((users[i].present != 0) && (users[i].lastTimeout > -1)) {
-            if ((min == -1) || (users[i].lastTimeout < min)) {
-                min = users[i].lastTimeout;
-            }
-        }
-    }
-    pthread_mutex_unlock(&mutexUsers);
-    return min;
-}
-
 int userGetRank(int index) {
     // Return 0 on an error case
     int r = 0;
@@ -325,8 +311,12 @@ int userGetRank(int index) {
     return r;
 }
 
-int waitForSockets(int timeout) {
-    // Prepare the pselect() timeout data structure
+// Returns 1 on activity, 0 on timeout, -1 on error
+int waitForSocket(int id, int timeout) {
+    if ((id < 0) || (id >= MAX_PLAYERS)) {
+        return 0;
+    }
+
     struct timespec ts;
     ts.tv_sec = 0;
 
@@ -337,7 +327,6 @@ int waitForSockets(int timeout) {
 
     ts.tv_nsec = timeout * 1000000;
 
-    // Prepare the set of blocked interrupt signals
     sigset_t blockset;
     sigfillset(&blockset);
     sigdelset(&blockset, SIGINT);
@@ -346,19 +335,16 @@ int waitForSockets(int timeout) {
     FD_ZERO(&fds);
     int max = -1;
     pthread_mutex_lock(&mutexUsers);
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (users[i].present) {
-            if (users[i].socket > max)
-                max = users[i].socket;
+    if (users[id].present) {
+        if (users[id].socket > max)
+            max = users[id].socket;
 
-            // Fill the datastructure with all used user sockets.
-            FD_SET(users[i].socket, &fds);
-        }
+        FD_SET(users[id].socket, &fds);
     }
     pthread_mutex_unlock(&mutexUsers);
 
     if (max == -1) {
-        return -1;
+        return 0;
     }
 
     int retval = pselect(max + 1, &fds, NULL, NULL, &ts, &blockset);
@@ -367,34 +353,18 @@ int waitForSockets(int timeout) {
             // We were interrupted (probably by Ctrl + C)
             close(userGetMainSocket());
             cleanCategories();
-            return -2;
+            return -1;
         } else {
             // An genuine error occured
             errnoPrint("select");
-            return -2;
+            return -1;
         }
     } else if (retval == 0) {
         // Nothing happened (timeout)
-        return -1;
+        return 0;
     } else {
         // Something happened!
-        pthread_mutex_lock(&mutexUsers);
-        int ret = -2;
-        for (int i = 0; i < MAX_PLAYERS; i++) {
-            if (users[i].present) {
-                // Find out which users socket had activity
-                if (FD_ISSET(users[i].socket, &fds)) {
-                    ret = i;
-                }
-            }
-        }
-        pthread_mutex_unlock(&mutexUsers);
-        if (ret < 0) {
-            errorPrint("Could not find active socket?!");
-        }
-
-        // Return the user slot that had activity
-        return ret;
+        return 1;
     }
 }
 

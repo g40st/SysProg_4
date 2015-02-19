@@ -82,6 +82,9 @@ static int singleton(const char *lockfile) {
     return 0;
 }
 
+static pthread_t threads[1 + MAX_PLAYERS];
+static int runningThreads = 0;
+
 /*
  * Helper function performing the login procedure.
  */
@@ -150,6 +153,12 @@ static void loginHandleSocket(int socket) {
         userSetName(pos, s);
         userSetSocket(pos, socket);
         scoreMarkForUpdate();
+
+        // Start client thread for new user
+        if (pthread_create(&threads[runningThreads++], NULL, clientThread, (void*)pos) != 0) {
+            errnoPrint("pthread_create");
+            return;
+        }
 
         // Send LOK message
         response.main.type[0] = 'L';
@@ -262,19 +271,14 @@ int main(int argc, char **argv) {
         return 1;
 
     debugPrint("Starting Threads...");
-    pthread_t threads[2];
 
     // Start the score agent thread
-    if (pthread_create(&threads[0], NULL, scoreThread, NULL) != 0) {
+    if (pthread_create(&threads[runningThreads++], NULL, scoreThread, NULL) != 0) {
         errnoPrint("pthread_create");
         return 1;
     }
 
-    // Start the client thread
-    if (pthread_create(&threads[1], NULL, clientThread, NULL) != 0) {
-        errnoPrint("pthread_create");
-        return 1;
-    }
+    clientInit();
 
     // Create the listening socket
     debugPrint("Creating socket...");
