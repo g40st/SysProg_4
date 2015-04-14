@@ -77,25 +77,25 @@ void createGameFrame(void) {
     game_setStatusIcon(STATUS_ICON_TIMEOUT);
 
     debugPrint("--> game_setPlayerName(0, \"Player1\")");
-    game_setPlayerName(0, "Player1");
+    game_setPlayerName(1, "Player1");
 
     debugPrint("--> game_setPlayerScore(0, 42)");
-    game_setPlayerScore(0, 42);
+    game_setPlayerScore(1, 42);
 
     debugPrint("--> game_setPlayerName(1, \"Player2\")");
-    game_setPlayerName(1, "Player2");
+    game_setPlayerName(2, "Player2");
 
     debugPrint("--> game_setPlayerScore(1, 23)");
-    game_setPlayerScore(1, 23);
+    game_setPlayerScore(2, 23);
 
     debugPrint("--> game_highlightPlayer(1)");
     game_highlightPlayer(1);
 
     debugPrint("--> game_setPlayerName(2, \"Player3\")");
-    game_setPlayerName(2, "Player3");
+    game_setPlayerName(3, "Player3");
 
     debugPrint("--> game_setPlayerScore(2, 4)");
-    game_setPlayerScore(2, 4);
+    game_setPlayerScore(3, 4);
 }
 
 void preparation_onCatalogChanged(const char *newSelection) {
