@@ -47,9 +47,7 @@ void createGameFrame(void) {
     game_setControlsEnabled(1);
 
     debugPrint("--> game_setQuestion(\"Bla ... bla\")");
-    game_setQuestion("Bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla "
-            "bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla "
-            "bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla");
+    game_setQuestion("Here is the question text ... ?");
 
     debugPrint("--> game_setAnswer(0, \"Answer 1\")");
     game_setAnswer(0, "Answer 1");
